@@ -20,7 +20,7 @@ class AutoTAP:
         self.step = config.getfloat('step', -0.0125, maxval=0.0)
         self.accuracy = config.getint('accuracy', 1000, minval=10)
         self.set_at_end = config.getbool('set_at_end', True)
-        self.samples = config.getint('samples', None, minval=1)
+        self.samples = config.getint('samples', 5, minval=1)
         self.probing_speed = config.getfloat('probing_speed', None, above=0.0)
         self.lift_speed = config.getfloat('lift_speed', None, above=0.0)
 
@@ -99,7 +99,8 @@ class AutoTAP:
                     if self.z_endstop.query_endstop:
                         samples.append(z/accuracy)
                         break
-                else: # Failed to activate z_endstop
+                else:
+                    self.gcode.respond_info(f"Failed to actuate z_endstop after full travel")
                     break
             
             if len(samples) == sample_count:

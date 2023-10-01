@@ -21,12 +21,26 @@ git clone https://github.com/Anonoei/klipper_auto_tap.git
 ## Configuration
 ```
 [auto_tap]
-start: 0.5 # Z height to start checking
-stop: -0.5 # Z height to stop checking if TAP doesn't actuate
-step: -0.0125 # Adjust Z height by this amount each check
-accuracy: 1000 # Internal use, converts above values to ints
-set_at_end: False # Set probe offset after calculation
-samples: 5 # How many times to check
-probing_speed: 150 # Speed when probing
-lift_speed: 300 # Speed when lifting
 ```
+Optionally, you can include these definitions instead of using the macro arguments
+```
+[auto_tap]
+start: 0.5
+stop: -0.5
+step: -0.0125
+set_at_end: False
+samples: 5
+probing_speed: 150
+lift_speed: 300
+```
+## Macro
+Run the klipper command `AUTO_TAP`. You can also use the arguments below
+Argument    | Default | Description
+----------- | ------- | -----------
+START       | 0.5     | Z height to start checking
+STOP        | -0.5    | Z height to stop checking
+STEP        | -0.0125 | Adjust Z by this amount each check
+SET         | False   | Set probe offset after calcuation
+SAMPLES     | 5       | How many times to check
+PROBE_SPEED | None    | Speed when probing
+LIFT_SPEED  | None    | Speed when lifting
