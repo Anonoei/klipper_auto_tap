@@ -14,6 +14,7 @@
 ## Installation
 ```
 cd ~
+cd klipper_auto_tap
 git clone https://github.com/Anonoei/klipper_auto_tap.git
 ./install.sh
 ```
