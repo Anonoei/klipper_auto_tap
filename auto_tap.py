@@ -24,14 +24,8 @@ class AutoTAP:
         self.probing_speed = config.getfloat('probing_speed', None, above=0.0)
         self.lift_speed = config.getfloat('lift_speed', None, above=0.0)
 
-        gcode_macro = self.printer.load_object(config, 'gcode_macro')
-        self.start_gcode = gcode_macro.load_template(config, 'start_gcode', '')
-        self.end_gcode = gcode_macro.load_template(config, 'end_gcode', '')
-
-        self.query_endstops = self.printer.load_object(config,
-                                                       'query_endstops')
-        self.printer.register_event_handler("klippy:connect",
-                                            self.handle_connect)
+        self.query_endstops = self.printer.load_object(config, 'query_endstops')
+        self.printer.register_event_handler("klippy:connect", self.handle_connect)
         
         self.gcode = self.printer.lookup_object('gcode')
         self.gcode.register_command('AUTO_TAP',
@@ -41,7 +35,7 @@ class AutoTAP:
     def handle_connect(self):
         for endstop, name in self.query_endstops.endstops:
             if name == 'z':
-                # check for virtual endstops..
+                # check for virtual endstops
                 if not isinstance(endstop, MCU_endstop):
                     raise self.printer.config_error("A virtual endstop for z"
                                                     " is not supported for %s"
@@ -64,6 +58,13 @@ class AutoTAP:
         def _calc_mean(self, positions):
             count = float(len(positions))
             return [sum([pos[i] for pos in positions]) / count for i in range(3)]
+        
+        def _endstop_triggered(self):
+            print_time = self.printer.lookup_object('toolhead').get_last_move_time()
+            result = self.z_endstop.query_endstop(print_time)
+            if result == "open":
+                return False
+            return True
 
         cmd_AUTO_TAP_help = ("Automatically calibrate Voron TAP's probe offset")
         def cmd_AUTO_TAP(self, gcmd):
@@ -91,12 +92,12 @@ class AutoTAP:
             mid_y = (pos_max.y - pos_min.y)/2
 
             samples = []
+            self._move([mid_x, mid_y, 10], lift_speed)
             while len(samples) < sample_count:
-                self._move([mid_x, mid_y, 10], lift_speed)
                 for z in range(int_start, int_stop, int_step):
-                    self._move([mid_x, mid_y, start], lift_speed)
-                    self._move([mid_x, mid_y, z/accuracy], speed)
-                    if self.z_endstop.query_endstop:
+                    self._move([None, None, start], lift_speed)
+                    self._move([None, None, z/accuracy], speed)
+                    if self._endstop_triggered():
                         samples.append(z/accuracy)
                         break
                 else:

@@ -19,6 +19,7 @@ git clone https://github.com/Anonoei/klipper_auto_tap.git
 ./install.sh
 ```
 ## Configuration
+Place this in your printer.cfg
 ```
 [auto_tap]
 ```
