@@ -1,6 +1,16 @@
 # Klipper Auto TAP
  Automatically find Voron TAP's probe offset
 
+# Table of Contents
+ - [Description](https://git.anonoei.com/anonoei/klipper_auto_tap#description)
+ - [Overview](https://git.anonoei.com/anonoei/klipper_auto_tap#overview)
+ - [Development status](https://git.anonoei.com/anonoei/klipper_auto_tap#development-statusroadmap)
+ - [Using Klipper Auto TAP](https://git.anonoei.com/anonoei/klipper_auto_tap#using-klipper-auto-tap)
+   - [Installation](https://git.anonoei.com/anonoei/klipper_auto_tap#installation)
+   - [Configuration](https://git.anonoei.com/anonoei/klipper_auto_tap#configuration)
+   - [Macro](https://git.anonoei.com/anonoei/klipper_auto_tap#macro)
+   - [Moonraker Update Manager](https://git.anonoei.com/anonoei/klipper_auto_tap#moonraker-update-manager)
+
 # Description
  - Intent: Create an easy to use, automated way to find Voron TAP's probe offset
 
@@ -12,12 +22,23 @@
 
 # Using Klipper Auto TAP
 ## Installation
+To install this module, you need to clone the repository and run the `install.sh` script
+### Automatic installation
 ```
 cd ~
-cd klipper_auto_tap
 git clone https://github.com/Anonoei/klipper_auto_tap.git
+cd klipper_auto_tap
 ./install.sh
 ```
+### Manual installation
+```
+cd ~
+git clone https://github.com/Anonoei/klipper_auto_tap.git
+cd klipper_auto_tap
+ln -sf ~/klipper_auto_tap/auto_tap.py ~/klipper/klippy/extras/auto_tap.py
+sudo systemctl restart klipper
+```
+
 ## Configuration
 Place this in your printer.cfg
 ```
@@ -45,3 +66,12 @@ SET         | False   | Set probe offset after calcuation
 SAMPLES     | 5       | How many times to check
 PROBE_SPEED | None    | Speed when probing
 LIFT_SPEED  | None    | Speed when lifting
+
+## Moonraker Update Manager
+```
+[update_manager klipper_auto_tap]
+type: git_repo
+path: ~/klipper_auto_tap
+origin: https://github.com/anonoei/klipper_auto_tap.git
+managed_services: klipper
+```

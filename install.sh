@@ -23,7 +23,7 @@ fi
 
 # Link auto_tap to klipper
 echo "Linking auto tap to Klipper..."
-ln -sf "${SRCDIR}/${extension}" "${KLIPPER_PATH}/klippy/extras/auto_tap.py"
+ln -sf "${SRCDIR}/auto_tap.py" "${KLIPPER_PATH}/klippy/extras/auto_tap.py"
 
 # Restart klipper
 echo "Restarting Klipper..."
