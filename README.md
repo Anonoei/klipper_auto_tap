@@ -18,7 +18,7 @@
  - License: MIT
 
 # Development status/roadmap
- - [ ] Initial release
+ - [X] Initial release
 
 # Using Klipper Auto TAP
 ## Installation
@@ -28,6 +28,7 @@ To install this module, you need to clone the repository and run the `install.sh
 cd ~
 git clone https://github.com/Anonoei/klipper_auto_tap.git
 cd klipper_auto_tap
+chmod +x install.sh
 ./install.sh
 ```
 ### Manual installation
@@ -47,25 +48,30 @@ Place this in your printer.cfg
 Optionally, you can include these definitions instead of using the macro arguments
 ```
 [auto_tap]
+x: 150
+y: 150
 start: 0.5
 stop: -0.5
-step: -0.0125
-set_at_end: False
+step: 0.0125
+set_at_end: True
 samples: 5
-probing_speed: 150
-lift_speed: 300
+retract_dist:
 ```
 ## Macro
 Run the klipper command `AUTO_TAP`. You can also use the arguments below
-Argument    | Default | Description
------------ | ------- | -----------
-START       | 0.5     | Z height to start checking
-STOP        | -0.5    | Z height to stop checking
-STEP        | -0.0125 | Adjust Z by this amount each check
-SET         | False   | Set probe offset after calcuation
-SAMPLES     | 5       | How many times to check
-PROBE_SPEED | None    | Speed when probing
-LIFT_SPEED  | None    | Speed when lifting
+Argument     | Default | Description
+------------ | ------- | -----------
+X            | 150     | X position to probe
+Y            | 150     | Y position to probe
+START        | 0.5     | Z height to start checking
+STOP         | -0.5    | Z height to stop checking
+STEP         | 0.0125  | Adjust Z by this amount each check
+SET          | True   | Set probe offset after calcuation
+SAMPLES      | 5       | How many times to check
+RETRACT      | None    | How far to retract z
+PROBE_SPEED  | None    | Speed when probing
+LIFT_SPEED   | None    | Speed when lifting
+TRAVEL_SPEED | None    | Speed when lifting
 
 ## Moonraker Update Manager
 ```
