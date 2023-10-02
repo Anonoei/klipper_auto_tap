@@ -2,14 +2,14 @@
  Automatically find Voron TAP's probe offset
 
 # Table of Contents
- - [Description](https://git.anonoei.com/anonoei/klipper_auto_tap#description)
- - [Overview](https://git.anonoei.com/anonoei/klipper_auto_tap#overview)
- - [Development status](https://git.anonoei.com/anonoei/klipper_auto_tap#development-statusroadmap)
- - [Using Klipper Auto TAP](https://git.anonoei.com/anonoei/klipper_auto_tap#using-klipper-auto-tap)
-   - [Installation](https://git.anonoei.com/anonoei/klipper_auto_tap#installation)
-   - [Configuration](https://git.anonoei.com/anonoei/klipper_auto_tap#configuration)
-   - [Macro](https://git.anonoei.com/anonoei/klipper_auto_tap#macro)
-   - [Moonraker Update Manager](https://git.anonoei.com/anonoei/klipper_auto_tap#moonraker-update-manager)
+ - [Description](https://github.com/anonoei/klipper_auto_tap#description)
+ - [Overview](https://github.com/anonoei/klipper_auto_tap#overview)
+ - [Development status](https://github.com/anonoei/klipper_auto_tap#development-statusroadmap)
+ - [Using Klipper Auto TAP](https://github.com/anonoei/klipper_auto_tap#using-klipper-auto-tap)
+   - [Installation](https://github.com/anonoei/klipper_auto_tap#installation)
+   - [Configuration](https://github.com/anonoei/klipper_auto_tap#configuration)
+   - [Macro](https://github.com/anonoei/klipper_auto_tap#macro)
+   - [Moonraker Update Manager](https://github.com/anonoei/klipper_auto_tap#moonraker-update-manager)
 
 # Description
  - Intent: Create an easy to use, automated way to find Voron TAP's probe offset
