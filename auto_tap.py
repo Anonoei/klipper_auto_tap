@@ -52,73 +52,73 @@ class AutoTAP:
         if self.lift_speed is None:
             self.lift_speed = probe.lift_speed
 
-        def _move(self, coord, speed):
-            self.printer.lookup_object('toolhead').manual_move(coord, speed)
+    def _move(self, coord, speed):
+        self.printer.lookup_object('toolhead').manual_move(coord, speed)
 
-        def _calc_mean(self, positions):
-            count = float(len(positions))
-            return [sum([pos[i] for pos in positions]) / count for i in range(3)]
+    def _calc_mean(self, positions):
+        count = float(len(positions))
+        return [sum([pos[i] for pos in positions]) / count for i in range(3)]
+    
+    def _endstop_triggered(self):
+        print_time = self.printer.lookup_object('toolhead').get_last_move_time()
+        result = self.z_endstop.query_endstop(print_time)
+        if result == "open":
+            return False
+        return True
+
+    cmd_AUTO_TAP_help = ("Automatically calibrate Voron TAP's probe offset")
+    def cmd_AUTO_TAP(self, gcmd):
+        if self.z_homing is None:
+            raise gcmd.error("Must home axes first")
         
-        def _endstop_triggered(self):
-            print_time = self.printer.lookup_object('toolhead').get_last_move_time()
-            result = self.z_endstop.query_endstop(print_time)
-            if result == "open":
-                return False
-            return True
+        start = gcmd.get_float("START", self.start, above=0.0)
+        stop = gcmd.get_float("STOP", self.stop, below=0.0)
+        step = gcmd.get_float("STEP", self.step, below=0.0)
+        set_at_end = gcmd.get_int("SET", self.set_at_end, above=0, below=1)
+        accuracy = gcmd.get_int("ACCURACY", self.accuracy, above=10)
+        sample_count = gcmd.get_int("SAMPLES", self.samples, minval=1)
+        speed = gcmd.get_float("PROBE_SPEED", self.probing_speed, above=0.0)
+        lift_speed = gcmd.get_float("LIFT_SPEED", self.lift_speed, above=0.0)
 
-        cmd_AUTO_TAP_help = ("Automatically calibrate Voron TAP's probe offset")
-        def cmd_AUTO_TAP(self, gcmd):
-            if self.z_homing is None:
-                raise gcmd.error("Must home axes first")
-            
-            start = gcmd.get_float("START", self.start, above=0.0)
-            stop = gcmd.get_float("STOP", self.stop, below=0.0)
-            step = gcmd.get_float("STEP", self.step, below=0.0)
-            set_at_end = gcmd.get_int("SET", self.set_at_end, above=0, below=1)
-            accuracy = gcmd.get_int("ACCURACY", self.accuracy, above=10)
-            sample_count = gcmd.get_int("SAMPLES", self.samples, minval=1)
-            speed = gcmd.get_float("PROBE_SPEED", self.probing_speed, above=0.0)
-            lift_speed = gcmd.get_float("LIFT_SPEED", self.lift_speed, above=0.0)
+        int_start = int(accuracy*start)
+        int_stop = int(accuracy*stop)
+        int_step = int(accuracy*step)
 
-            int_start = int(accuracy*start)
-            int_stop = int(accuracy*stop)
-            int_step = int(accuracy*step)
+        toolhead = self.printer.lookup_object('toolhead')
+        pos_max = toolhead.get_axis_maximum()
+        pos_min = toolhead.get_axis_minimum()
 
-            toolhead = self.printer.lookup_object('toolhead')
-            pos_max = toolhead.get_axis_maximum()
-            pos_min = toolhead.get_axis_minimum()
+        mid_x = (pos_max.x - pos_min.x)/2
+        mid_y = (pos_max.y - pos_min.y)/2
 
-            mid_x = (pos_max.x - pos_min.x)/2
-            mid_y = (pos_max.y - pos_min.y)/2
-
-            samples = []
-            self._move([mid_x, mid_y, 10], lift_speed)
-            while len(samples) < sample_count:
-                for z in range(int_start, int_stop, int_step):
-                    self._move([None, None, start], lift_speed)
-                    self._move([None, None, z/accuracy], speed)
-                    if self._endstop_triggered():
-                        samples.append(z/accuracy)
-                        break
-                else:
-                    self.gcode.respond_info(f"Failed to actuate z_endstop after full travel")
+        samples = []
+        self._move([mid_x, mid_y, 10], lift_speed)
+        while len(samples) < sample_count:
+            for z in range(int_start, int_stop, int_step):
+                self._move([None, None, start], lift_speed)
+                self._move([None, None, z/accuracy], speed)
+                if self._endstop_triggered():
+                    samples.append(z/accuracy)
                     break
-            
-            if len(samples) == sample_count:
-                z_mean = self._calc_mean(samples)
-                z_min = min(samples)
-                z_max = max(samples)
-                self.gcode.respond_info(f"Auto TAP Results\nMean: {z_mean:.4f} Min: {z_min:.3f} Max: {z_max:.4f}")
-                if set_at_end:
-                    gcmd_offset = self.gcode.create_gcode_command("SET_GCODE_OFFSET",
-                                                        "SET_GCODE_OFFSET",
-                                                        {'Z': 0.0})
-                    self.gcode_move.cmd_SET_GCODE_OFFSET(gcmd_offset)
-                    # set new gcode z offset
-                    gcmd_offset = self.gcode.create_gcode_command("SET_GCODE_OFFSET",
-                                                                "SET_GCODE_OFFSET",
-                                                                {'Z_ADJUST': z_mean})
-                    self.gcode_move.cmd_SET_GCODE_OFFSET(gcmd_offset)
+            else:
+                self.gcode.respond_info(f"Failed to actuate z_endstop after full travel")
+                break
+        
+        if len(samples) == sample_count:
+            z_mean = self._calc_mean(samples)
+            z_min = min(samples)
+            z_max = max(samples)
+            self.gcode.respond_info(f"Auto TAP Results\nMean: {z_mean:.4f} Min: {z_min:.3f} Max: {z_max:.4f}")
+            if set_at_end:
+                gcmd_offset = self.gcode.create_gcode_command("SET_GCODE_OFFSET",
+                                                    "SET_GCODE_OFFSET",
+                                                    {'Z': 0.0})
+                self.gcode_move.cmd_SET_GCODE_OFFSET(gcmd_offset)
+                # set new gcode z offset
+                gcmd_offset = self.gcode.create_gcode_command("SET_GCODE_OFFSET",
+                                                            "SET_GCODE_OFFSET",
+                                                            {'Z_ADJUST': z_mean})
+                self.gcode_move.cmd_SET_GCODE_OFFSET(gcmd_offset)
 
 class EndstopWrapper:
     def __init__(self, config, endstop):
