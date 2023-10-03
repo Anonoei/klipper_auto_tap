@@ -50,9 +50,8 @@ Optionally, you can include these definitions instead of using the macro argumen
 [auto_tap]
 x: 150
 y: 150
-start: 0.5
-stop: -0.5
-step: 0.0125
+stop: 1.0
+step: 0.005
 set_at_end: True
 samples: 5
 retract_dist:
@@ -63,10 +62,9 @@ Argument     | Default | Description
 ------------ | ------- | -----------
 X            | 150     | X position to probe
 Y            | 150     | Y position to probe
-START        | 0.5     | Z height to start checking
-STOP         | -0.5    | Z height to stop checking
-STEP         | 0.0125  | Adjust Z by this amount each check
-SET          | True   | Set probe offset after calcuation
+STOP         | 1.0     | Z height to stop checking
+STEP         | 0.0125  | Lift Z by this amount each check
+SET          | True    | Set probe offset after calculation
 SAMPLES      | 5       | How many times to check
 RETRACT      | None    | How far to retract z
 PROBE_SPEED  | None    | Speed when probing
@@ -81,3 +79,12 @@ path: ~/klipper_auto_tap
 origin: https://github.com/anonoei/klipper_auto_tap.git
 managed_services: klipper
 ```
+
+# How does it work?
+
+ 1.  Probe the bed
+     - The distance this probe measures is your printer's z0
+     - Since TAP presses the nozzle down into the bed, z0 will actuate TAP
+ 2.  Auto TAP
+     - Move the nozzle to z0, raise the nozzle by step until TAP de-actuates
+ 3. Set z offset to measured distance mean * 2
