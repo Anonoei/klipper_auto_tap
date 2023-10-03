@@ -1,4 +1,9 @@
 #!/bin/bash
+# Automatically calibrate Voron TAP's probe offset
+#
+# Copyright (C) 2023 Anonoei <dev@anonoei.com>
+#
+# This file may be distributed under the terms of the MIT license.
 
 # Force script to exit if an error occurs
 set -e

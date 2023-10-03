@@ -1,4 +1,4 @@
-# Automate calibrating Voron TAP probe offset
+# Automatically calibrate Voron TAP's probe offset
 #
 # Copyright (C) 2023 Anonoei <dev@anonoei.com>
 #
