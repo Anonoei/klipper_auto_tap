@@ -13,18 +13,26 @@ class AutoTAP:
         self.config = config
         self.printer = config.get_printer()
 
-        self.x = config.getfloat('x', 150)
-        self.y = config.getfloat('y', 150)
-        self.z = config.getfloat('z', 10)
-        self.settling_probe = config.getint('settling_probe', 1, minval=0, maxval=1)
-        self.stop = config.getfloat('stop', 1.0, minval=0.0)
-        self.step = config.getfloat('step', 0.005, minval=0.0)
-        self.set = config.getint('set', 1, minval=0, maxval=1)
-        self.samples = config.getint('samples', None, minval=1)
-        self.retract_dist = config.getfloat('retract', None, above=0.)
-        self.probe_speed = config.getfloat('probe_speed', None, above=0.0)
-        self.lift_speed = config.getfloat('lift_speed', None, above=0.0)
-        self.travel_speed = config.getfloat('travel_speed', 1000.0, above=0.0)
+        self.calc_choices = {"NONE": "NONE", "QGL": "QGL", "STA": "STA"}
+
+        self.x              = config.getfloat(  'x',              default=150)
+        self.y              = config.getfloat(  'y',              default=150)
+        self.z              = config.getfloat(  'z',              default=10)
+
+        self.set            = config.getboolean('set',            default=True)
+        self.settling_probe = config.getboolean('settling_probe', default=True)
+        self.calc_method    = config.getchoice( 'calc_method',    default="NONE",   choices=self.calc_choices)
+
+        self.stop           = config.getfloat(  'stop',           default=1.0,    minval=0.0)
+        self.step           = config.getfloat(  'step',           default=0.005,  minval=0.0)
+
+        self.samples        = config.getint(    'samples',        default=None,   minval=1)
+        self.retract_dist   = config.getfloat(  'retract',        default=None,   above=0.0)
+
+        self.probe_speed    = config.getfloat(  'probe_speed',    default=None,   above=0.0)
+        self.lift_speed     = config.getfloat(  'lift_speed',     default=None,   above=0.0)
+        self.travel_speed   = config.getfloat(  'travel_speed',   default=1000.0, above=0.0)
+
 
         self.offset = None
 
@@ -52,6 +60,14 @@ class AutoTAP:
         if self.lift_speed is None:
             self.lift_speed = probe.lift_speed
 
+        if self.calc_method == "NONE":
+            if self.printer.lookup_object('quad_gantry_level', default=None) is not None:
+                self.calc_method = "QGL"
+            elif self.printer.lookup_object('screws_tilt_adjust', default=None) is not None:
+                self.calc_method = "STA"
+            else:
+                self.calc_method = "QGL"
+
     def handle_home_rails_end(self, homing_state, rails):
         # get z homing position
         for rail in rails:
@@ -71,17 +87,25 @@ class AutoTAP:
         x = gcmd.get_float("X", self.x)
         y = gcmd.get_float("Y", self.y)
         z = gcmd.get_float("Z", self.z)
-        settling_probe = gcmd.get_int("SETTLING_PROBE", self.settling_probe, minval=0, maxval=1)
-        stop = gcmd.get_float("STOP", self.stop, above=0.0)
-        step = gcmd.get_float("STEP", self.step, above=0.0)
-        set_at_end = gcmd.get_int("SET", self.set, minval=0, maxval=1)
-        sample_count = gcmd.get_int("SAMPLES", self.samples, minval=1)
-        retract = gcmd.get_float("RETRACT", self.retract_dist, above=0.0)
-        probe_speed = gcmd.get_float("PROBE_SPEED", self.probe_speed, above=0.0)
-        lift_speed = gcmd.get_float("LIFT_SPEED", self.lift_speed, above=0.0)
-        travel_speed = gcmd.get_float("TRAVEL_SPEED", self.travel_speed, above=0.0)
+
+        set_at_end = gcmd.get_int("SET", default=self.set, minval=0, maxval=1)
+        settling_probe = gcmd.get_int("SETTLING_PROBE", default=self.settling_probe, minval=0, maxval=1)
+        calc_method = gcmd.get('CALC_METHOD', default=self.calc_method)
+
+        stop = gcmd.get_float("STOP", default=self.stop, above=0.0)
+        step = gcmd.get_float("STEP", default=self.step, above=0.0)
+
+        sample_count = gcmd.get_int("SAMPLES", default=self.samples, minval=1)
+        retract = gcmd.get_float("RETRACT", default=self.retract_dist, above=0.0)
+
+        probe_speed = gcmd.get_float("PROBE_SPEED", default=self.probe_speed, above=0.0)
+        lift_speed = gcmd.get_float("LIFT_SPEED", default=self.lift_speed, above=0.0)
+        travel_speed = gcmd.get_float("TRAVEL_SPEED", default=self.travel_speed, above=0.0)
 
         force = gcmd.get_int("FORCE", 0, minval=0, maxval=1)
+
+        if not calc_method in self.calc_choices.keys():
+            raise gcmd.error(f"CALC_METHOD must be one of {', '.join(self.calc_choices.keys())}")
 
         if not force and self.offset is not None:
             self.gcode.respond_info(f"Auto TAP set z-offset to {self.offset:.3f}")
@@ -92,9 +116,10 @@ class AutoTAP:
         self._set_z_offset(0.0) # reset gcode z offset to 0
 
         step_count = int(stop / step)
-        self.gcode.respond_info(f"Auto TAP performing {sample_count} samples with {step_count} steps\nStop: {stop}, Step: {step}")
+        self.gcode.respond_info(f"Auto TAP performing {sample_count} samples to calculate z-offset with {calc_method} method\nPossible steps: {step_count}, Stop: {stop}, Step: {step}")
         steps = []
         probes = []
+        measures = []
         travels = []
         if settling_probe:
             self._probe(self.z_endstop.mcu_endstop, -1, probe_speed)
@@ -110,7 +135,8 @@ class AutoTAP:
                 if not self._endstop_triggered():
                     steps.append(i)
                     probes.append(start_at)
-                    travel = abs(start_at) + abs(z_pos)
+                    measures.append(z_pos)
+                    travel = abs(start_at - z_pos)
                     travels.append(travel)
                     sample = f"Auto TAP sample {len(travels)}\n"
                     sample += f"Traveled: {travel:.4f} from z{start_at:.4f} to {z_pos:.4f} on step {i}"
@@ -129,24 +155,39 @@ class AutoTAP:
             probe_min = min(probes)
             probe_max = max(probes)
 
-            step_mean = self._calc_mean(steps)
-            step_min = min(steps)
-            step_max = max(steps)
+            measure_mean = self._calc_mean(measures)
+            measure_min = self._calc_mean(measures)
+            measure_max = self._calc_mean(measures)
+
 
             travel_mean = self._calc_mean(travels)
             travel_min = min(travels)
             travel_max = max(travels)
 
-            travel_offset = travel_mean * 2
+            if calc_method == "QGL":
+                """
+                    QGL example
+                      Traveled from z-0.17 (probe) to 0.80 (measure)
+                      TAP travel = abs(probe) + abs(measure) = 0.10
+                      Offset = travel * 2 = 0.2
+                """
+                self.offset = travel_mean * 2
+            elif calc_method == "STA":
+                """
+                    STA example
+                      Traveled from z-0.60 (probe) to -0.57 (measure)
+                      TAP travel = abs(probe - measure) = 0.03
+                      Offset = measure + (travel/2) = -0.585
+                """
+                self.offset = measure_mean + (travel_mean/2)
 
             results = "Auto TAP Results\n"
             results += f"Samples: {len(travels)}, Total Steps: {sum(steps)}\n"
-            results += f"Travel Mean: {travel_mean:.4f} / Min: {travel_min:.4f} / Max: {travel_max:.4f}\n"
             results += f"Probe Mean: {probe_mean:.4f} / Min: {probe_min:.4f} / Max: {probe_max:.4f}\n"
-            results += f"Step Mean: {step_mean:.2f} / Min: {step_min} / Max: {step_max}\n"
-            results += f"Calculated Z-Offset: {travel_offset:.3f}"
+            results += f"Measure Mean: {measure_mean:.4f} / Min: {measure_min:.4f} / Max: {measure_max:.4f}\n"
+            results += f"Travel Mean: {travel_mean:.4f} / Min: {travel_min:.4f} / Max: {travel_max:.4f}\n"
+            results += f"Calculated {calc_method} Z-Offset: {self.offset:.3f}"
             self.gcode.respond_info(results)
-            self.offset = travel_offset
             if set_at_end:
                 self._set_z_offset(self.offset)
 
