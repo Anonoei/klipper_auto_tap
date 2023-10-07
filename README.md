@@ -1,9 +1,17 @@
 # Klipper Auto TAP
  Klipper module for automatic z-offset configuration on [Voron TAP](https://github.com/VoronDesign/Voron-Tap)
 
-This module calculates the distance your toolhead lifts to actuate TAP. Doing this enables *automatic z-offset calculation*. i.e. make `G0 Z0.2` put the nozzle at 0.2mm above the bed. On textured PEI, the offset may need to be slightly lowered to get proper first-layer squish. YMMV.
+This module calculates the distance your toolhead lifts to actuate TAP. 
+Doing this enables *automatic z-offset calculation*. i.e. make `G0 Z0.2` put the nozzle at 0.2mm above the bed. 
+This is a fairly slow process since the toolhead needs to move by *step* (0.005), check if the endstop is still triggered, and repeat. 
+Check [how it works](https://github.com/anonoei/klipper_auto_tap#how-does-it-work) for more information. 
 
-This is only known to work on QGL based printers, namely the Voron 2. If you use a different printer and want to help add support, please post create an [issue](https://github.com/Anonoei/klipper_auto_tap/issues), or message me on Discord. Please include Auto TAP's console output so I can try to fix the issue.
+On textured PEI, the offset may need to be slightly lowered to get proper first-layer squish. 
+YMMV.
+
+This is only known to work on QGL based printers, namely the Voron 2. 
+If you use a different printer and want to help add support, please post create an [issue](https://github.com/Anonoei/klipper_auto_tap/issues), or message me on Discord. 
+Please include Auto TAP's console output so I can try to fix the issue.
 
 **This module is under development**: Please ensure the calculated offset seems reasonable for your printer!
 
@@ -22,14 +30,15 @@ This is only known to work on QGL based printers, namely the Voron 2. If you use
 
 
 ## How does it work?
-1. Probe the bed
-   - The distance this probe measures is your printer's z0
-   - Since TAP presses the nozzle down into the bed, z0 will actuate TAP (and be a negative number to true z0)
-2. Auto TAP, on each sample
-   1.  Probe the bed, and save the measured value
-   2.  Move the nozzle to the measured value, and raise it by *step* until TAP de-actuates
-   3.  Save *travel* = `abs(probe z - measure distance)`
-3. Calculate Z-Offset based on `CALC_METHOD`
+1. Home your printer
+   - When your printer homes Z, your toolhead is lifted until the endstop is triggered, making that lifted point your z0
+2. Move to park position
+3. For each sample, tap!
+   1. Probe the bed, and keep it at the position where endstop triggers
+   2. Slowly lift the toolhead by *step* until the endstop isn't triggered
+   3. Calculate travel distance *travel* = `abs(probe z - measure distance)`
+   4. Save the resulting probe, measure distance, and travel
+4. Calculate Z-Offset based on `CALC_METHOD`
    - QGL: `travel_mean \* 2`
    - STA: `measure_mean + (travel_mean/2)` (under development)
 
