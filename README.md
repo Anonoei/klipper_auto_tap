@@ -125,5 +125,7 @@ If you run `AUTO_TAP` again, it will set the z-offset to the last calculated val
 type: git_repo
 path: ~/klipper_auto_tap
 origin: https://github.com/anonoei/klipper_auto_tap.git
+primary_branch: main
+install_script: install.sh
 managed_services: klipper
 ```
