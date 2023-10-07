@@ -18,12 +18,13 @@ class AutoTAP:
         self.x              = config.getfloat(  'x',              default=150)
         self.y              = config.getfloat(  'y',              default=150)
         self.z              = config.getfloat(  'z',              default=10)
+        self.probe_to       = config.getfloat(  'probe_to',       default=-2, maxval=0.0)
 
         self.set            = config.getboolean('set',            default=True)
         self.settling_probe = config.getboolean('settling_probe', default=True)
         self.calc_method    = config.getchoice( 'calc_method',    default="NONE",   choices=self.calc_choices)
 
-        self.stop           = config.getfloat(  'stop',           default=1.0,    minval=0.0)
+        self.stop           = config.getfloat(  'stop',           default=2.0,    minval=0.0)
         self.step           = config.getfloat(  'step',           default=0.005,  minval=0.0)
 
         self.samples        = config.getint(    'samples',        default=None,   minval=1)
@@ -32,7 +33,6 @@ class AutoTAP:
         self.probe_speed    = config.getfloat(  'probe_speed',    default=None,   above=0.0)
         self.lift_speed     = config.getfloat(  'lift_speed',     default=None,   above=0.0)
         self.travel_speed   = config.getfloat(  'travel_speed',   default=1000.0, above=0.0)
-
 
         self.offset = None
 
@@ -87,6 +87,7 @@ class AutoTAP:
         x = gcmd.get_float("X", self.x)
         y = gcmd.get_float("Y", self.y)
         z = gcmd.get_float("Z", self.z)
+        probe_to = gcmd.get_float("PROBE_TO", self.probe_to)
 
         set_at_end = gcmd.get_int("SET", default=self.set, minval=0, maxval=1)
         settling_probe = gcmd.get_int("SETTLING_PROBE", default=self.settling_probe, minval=0, maxval=1)
@@ -112,42 +113,30 @@ class AutoTAP:
             self._set_z_offset(self.offset)
             return
 
-        self._move([x, y, z], travel_speed) # Move to probe position
-        self._set_z_offset(0.0) # reset gcode z offset to 0
+        self._move([x, y, z], travel_speed) # Move to park position
+        self._set_z_offset(0.0) # set z-offset to 0
 
-        step_count = int(stop / step)
-        self.gcode.respond_info(f"Auto TAP performing {sample_count} samples to calculate z-offset with {calc_method} method\nPossible steps: {step_count}, Stop: {stop}, Step: {step}")
         steps = []
         probes = []
         measures = []
         travels = []
+        self.gcode.respond_info(f"Auto TAP performing {sample_count} samples to calculate z-offset with {calc_method} method\nProbe Min: {probe_to}, Stop: {stop}, Step: {step}")
         if settling_probe:
-            self._probe(self.z_endstop.mcu_endstop, -1, probe_speed)
+            self._probe(self.z_endstop.mcu_endstop, probe_to, probe_speed)
             self._move([None, None, stop + retract], lift_speed)
         while len(travels) < sample_count:
-            start_at = self._probe(self.z_endstop.mcu_endstop, -1, probe_speed)[2]
-            #self.gcode.respond_info(f"Starting sample {len(travels) + 1}")
-            for i in range(0, step_count, 1):
-                z_pos = start_at + (step * i)
-                #self.gcode.respond_info(f"Step {i}, moving to {z_pos}")
-                self._move([None, None, z_pos], probe_speed)
-                self.printer.lookup_object('toolhead').wait_moves()
-                if not self._endstop_triggered():
-                    steps.append(i)
-                    probes.append(start_at)
-                    measures.append(z_pos)
-                    travel = abs(start_at - z_pos)
-                    travels.append(travel)
-                    sample = f"Auto TAP sample {len(travels)}\n"
-                    sample += f"Traveled: {travel:.4f} from z{start_at:.4f} to {z_pos:.4f} on step {i}"
-                    self.gcode.respond_info(sample)
-                    self._move([None, None, stop + retract], lift_speed)
-                    break
-            else:
-                self.gcode.respond_info(f"Failed to actuate z_endstop after full travel")
-                break
+            result = self._tap(step, stop, probe_to, probe_speed)
             self._move([None, None, stop + retract], lift_speed)
-        # Move to probe position
+            if result is None:
+                raise gcmd.error(f"Failed to de-actuate z_endstop after full travel! Try changing STOP to a value larger than {stop}")
+            steps.append(result[0])
+            probes.append(result[1])
+            measures.append(result[2])
+            travels.append(result[3])
+            sample = f"Auto TAP sample {len(travels)}\n"
+            sample += f"Traveled: {travels[-1]:.4f} from z{probes[-1]:.4f} to {measures[-1]:.4f} on step {steps[-1]}"
+            self.gcode.respond_info(sample)
+        # Move to park position
         self._move([None, None, z], lift_speed)
         
         if len(travels) > 0:
@@ -191,21 +180,27 @@ class AutoTAP:
             if set_at_end:
                 self._set_z_offset(self.offset)
 
+    def _tap(self, step_size: float, stop: float, probe_min, probe_speed: float) -> tuple[int, float, float, float]:
+        probe = self._probe(self.z_endstop.mcu_endstop, probe_min, probe_speed)[2] # Moves until TAP actuates
+        steps = int((abs(probe) + stop) / step_size)
+        for step in range(0, steps):
+            z_pos = probe + (step * step_size) # checking z-position
+            self._move([None, None, z_pos], probe_speed)
+            self.printer.lookup_object('toolhead').wait_moves() # Wait for toolhead to move
+            if not self._endstop_triggered():
+                travel = abs(probe - z_pos)
+                return(step, probe, z_pos, travel)
+        return None
+
     def _move(self, coord, speed):
         self.printer.lookup_object('toolhead').manual_move(coord, speed)
 
-    def _probe(self, mcu_endstop, z_position, speed):
+    def _probe(self, mcu_endstop, min_z: float, speed: float) -> list[float, float, float]:
         toolhead = self.printer.lookup_object('toolhead')
         pos = toolhead.get_position()
-        pos[2] = z_position
-        phoming = self.printer.lookup_object('homing')
-        curpos = phoming.probing_move(mcu_endstop, pos, speed)
-        #self.gcode.respond_info(f"Auto TAP probed {curpos[0]:.3f}, {curpos[1]:.3f}, got z={curpos[2]:.4f}")
-        return curpos
-
-    def _calc_mean(self, positions):
-        count = float(len(positions))
-        return sum(positions) / count
+        pos[2] = min_z
+        homing = self.printer.lookup_object('homing')
+        return homing.probing_move(mcu_endstop, pos, speed)
     
     def _endstop_triggered(self):
         print_time = self.printer.lookup_object('toolhead').get_last_move_time()
@@ -213,6 +208,10 @@ class AutoTAP:
         if result == 0:
             return False
         return True
+
+    def _calc_mean(self, positions):
+        count = float(len(positions))
+        return sum(positions) / count
 
     def _set_z_offset(self, offset):
         gcmd_offset = self.gcode.create_gcode_command("SET_GCODE_OFFSET",

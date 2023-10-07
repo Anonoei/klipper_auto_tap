@@ -1,9 +1,11 @@
 # Klipper Auto TAP
  Klipper module for automatic z-offset configuration on [Voron TAP](https://github.com/VoronDesign/Voron-Tap)
 
-This extension calculates TAP's travel distance, i.e., the distance your toolhead lifts up to actuate TAP. Doing this enables *automatic z-offset calculation*. This allows the **absolute** offset to be measured, i.e. make `G0 Z0.2` put the nozzle at 0.2mm above the bed.
+This module calculates the distance your toolhead lifts to actuate TAP. Doing this enables *automatic z-offset calculation*. i.e. make `G0 Z0.2` put the nozzle at 0.2mm above the bed. On textured PEI, the offset may need to be slightly lowered to get proper first-layer squish. YMMV.
 
-On textured PEI, the offset may need to be slightly lowered to get proper first-layer squish. YMMV. 
+This is only known to work on QGL based printers, namely the Voron 2. If you use a different printer and want to help add support, please post create an [issue](https://github.com/Anonoei/klipper_auto_tap/issues), or message me on Discord. Please include Auto TAP's console output so I can try to fix the issue.
+
+**This module is under development**: Please ensure the calculated offset seems reasonable for your printer!
 
 # Table of Contents
  - [Overview](https://github.com/anonoei/klipper_auto_tap#overview)
@@ -17,8 +19,6 @@ On textured PEI, the offset may need to be slightly lowered to get proper first-
 
 ## Overview
  - License: MIT
- - Testing:
-   - Anonoei: [Voron 2.4 "Palladium"](https://github.com/anonoei/Palladium)
 
 
 ## How does it work?
@@ -31,11 +31,13 @@ On textured PEI, the offset may need to be slightly lowered to get proper first-
    3.  Save *travel* = `abs(probe z - measure distance)`
 3. Calculate Z-Offset based on `CALC_METHOD`
    - QGL: `travel_mean \* 2`
-   - STA: `measure_mean + (travel_mean/2)`
+   - STA: `measure_mean + (travel_mean/2)` (under development)
 
 ## Usage examples
 One and done:
  - Run `AUTO_TAP`, and save the z-offset. Adjust as needed based on build surface material
+
+
 Before starting print:
  - In your `PRINT_START` macro, add `AUTO_TAP` after homing and leveling have been complete
 
@@ -69,19 +71,20 @@ Place this in your printer.cfg
 Optionally, you can include these definitions instead of using the macro arguments
 ```
 [auto_tap]
-x: 150
-y: 150
-z: 10
-set: 1
-settling_probe: 1
-calc_method: <your printers leveling method, "QGL", or "STA">
-stop: 1.0
-step: 0.005
-samples: <your config's probe sample count>
-retract: <your config's probe retract distance>
-probe_speed: <your config's probe travel speed>
-lift_speed: <your config's probe lift speed>
-travel_speed: 1000
+x: 150               ; X position to probe, should be the middle of your bed
+y: 150               ; Y position to probe, should be the middle of your bed
+z: 10                ; Z position to park
+probe_to: -2         ; Lower probe until it triggers, or reaches this value
+set: True            ; Set probe offset after calculation
+settling_probe: True ; Perform a dummy probe before starting
+calc_method: unset   ; Defaults to your printers leveling method, "QGL", or "STA". You probably don't want to change this
+stop: 2.0            ; Lift Z up to this amount for TAP to de-actuate
+step: 0.005          ; Lift Z by this amount each check
+samples: unset       ; Number of samples to take, Defaults to your config's probe sample count
+retract: unset       ; Lift up by this amount at end, Defaults to your config's probe retract distance
+probe_speed: unset   ; Probe at this speed, Defaults to your config's probe travel speed
+lift_speed: unset    ; Retract at this speed, Defaults to your config's probe lift speed
+travel_speed: 1000   ; Speed for travel to park position
 ```
 ### Macro
 Run the klipper command `AUTO_TAP`. You can also use the arguments below
@@ -89,17 +92,18 @@ Argument       | Default | Description
 -------------- | ------- | -----------
 X              | 150     | X position to probe
 Y              | 150     | Y position to probe
-Z              | 10      | Z position to probe
+Z              | 10      | Z position to park
+PROBE_TO       | -2      | Lower probe until it triggers, or reaches this value
 SET            | 1       | Set probe offset after calculation
 SETTLING_PROBE | 1       | Perform a dummy probe before starting
-CALC_METHOD    | None    | Method to calculate z-offset
-STOP           | 1.0     | Z height to stop checking
+CALC_METHOD    | Unset   | Defaults to your printers leveling method, "QGL", or "STA". You probably don't want to change this
+STOP           | 2.0     | Lift Z up to this amount for TAP to de-actuate
 STEP           | 0.005   | Lift Z by this amount each check
-SAMPLES        | None    | How many times to check
-RETRACT        | None    | How far to retract z
-PROBE_SPEED    | None    | Speed when probing
-LIFT_SPEED     | None    | Speed when lifting
-TRAVEL_SPEED   | 1000    | Speed when traveling
+SAMPLES        | Unset   | Number of samples to take, Defaults to your config's probe sample count
+RETRACT        | Unset   | Lift up by this amount at end, Defaults to your config's probe retract distance
+PROBE_SPEED    | Unset   | Probe at this speed, Defaults to your config's probe travel speed
+LIFT_SPEED     | Unset   | Retract at this speed, Defaults to your config's probe lift speed
+TRAVEL_SPEED   | 1000    | Speed for travel to park position
 FORCE          | 0       | Force AUTO_TAP to run, even if it was calculated previously
 
 If you set values under *Configuration*, those will become the defaults.
