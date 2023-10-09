@@ -1,6 +1,8 @@
 # Klipper Auto TAP
  Klipper module for automatic z-offset configuration on [Voron TAP](https://github.com/VoronDesign/Voron-Tap)
 
+**This module is under development**: Please ensure the calculated offset seems reasonable for your printer! See [Validate Results](https://github.com/klipper_auto_tap#validate_results) for how to validate the offset.
+
 This module calculates the distance your toolhead lifts to actuate TAP. 
 Doing this enables *automatic z-offset calculation*. i.e. make `G0 Z0.2` put the nozzle at 0.2mm above the bed. 
 This is a fairly slow process since the toolhead needs to move by *step* (0.005), check if the endstop is still triggered, and repeat. 
@@ -13,18 +15,22 @@ This is only known to work on QGL based printers, namely the Voron 2.
 If you use a different printer and want to help add support, please create an [issue](https://github.com/Anonoei/klipper_auto_tap/issues), or message me on Discord. 
 Please include Auto TAP's console output so I can try to fix the issue.
 
-**This module is under development**: Please ensure the calculated offset seems reasonable for your printer! See [Validate Results](https://github.com/klipper_auto_tap#validate_results) for how to validate the offset.
+## Known issues
+ - [Issue 2](https://github.com/Anonoei/klipper_auto_tap/issues/2): TILT_ADJUST printers calculate wrong offset
+   - If you run a trident, or other printer that uses something other than QGL for leveling, the results won't be accurate.
+ - [Issue 5](https://github.com/Anonoei/klipper_auto_tap/issues/5): TAP implementation changes expected offset
+   - Different implementations of TAP (CL CNC, Mellow CNC, stock) have different expected offsets, the results may not be accurate depending on what version of tap you are using. Please [validate results](https://github.com/klipper_auto_tap#validate_results).
 
 # Table of Contents
- - [Overview](https://github.com/anonoei/klipper_auto_tap#overview)
- - [How does it work](https://github.com/anonoei/klipper_auto_tap#how-does-it-work)
- - [Using Klipper Auto TAP](https://github.com/anonoei/klipper_auto_tap#using-klipper-auto-tap)
-   - [Installation](https://github.com/anonoei/klipper_auto_tap#installation)
-     - [Moonraker Update Manager](https://github.com/anonoei/klipper_auto_tap#moonraker-update-manager)
-   - [Configuration](https://github.com/anonoei/klipper_auto_tap#configuration)
-   - [Macro](https://github.com/anonoei/klipper_auto_tap#macro)
-   - [Validate Results](https://github.com/klipper_auto_tap#validate_results)
-   - [Example usage](https://github.com/anonoei/klipper_auto_tap#example_usage)
+ - [Overview](https://github.com/Anonoei/klipper_auto_tap#overview)
+ - [How does it work](https://github.com/Anonoei/klipper_auto_tap#how-does-it-work)
+ - [Using Klipper Auto TAP](https://github.com/Anonoei/klipper_auto_tap#using-klipper-auto-tap)
+   - [Installation](https://github.com/Anonoei/klipper_auto_tap#installation)
+     - [Moonraker Update Manager](https://github.com/Anonoei/klipper_auto_tap#moonraker-update-manager)
+   - [Configuration](https://github.com/Anonoei/klipper_auto_tap#configuration)
+   - [Macro](https://github.com/Anonoei/klipper_auto_tap#macro)
+   - [Validate Results](https://github.com/Anonoei/klipper_auto_tap#validate-results)
+   - [Example usage](https://github.com/Anonoei/klipper_auto_tap#example-usage)
 
 ## Overview
  - License: MIT
