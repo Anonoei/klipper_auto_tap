@@ -14,6 +14,20 @@ class AutoTAP:
         self.printer = config.get_printer()
 
         self.calc_choices = {"NONE": "NONE", "QGL": "QGL", "STA": "STA"}
+        self.tap_choices = {
+            "DEV": {
+                "Expected": (0.0, 9.0),
+                "Multiple": 2,
+            },
+            "CL_CNC": {
+                "Expected": (0.0, 1.0),
+                "Multiple": 2,
+            },
+            "RC8": {
+                "Expected": (0.5, 2.0),
+                "Multiple": 4,
+            },
+        }
 
         self.x              = config.getfloat(  'x',              default=None)
         self.y              = config.getfloat(  'y',              default=None)
@@ -23,6 +37,7 @@ class AutoTAP:
         self.set            = config.getboolean('set',            default=True)
         self.settling_probe = config.getboolean('settling_probe', default=True)
         self.calc_method    = config.getchoice( 'calc_method',    default="NONE",   choices=self.calc_choices)
+        self.tap_version    = config.getchoice( 'tap_version',    default="DEV",  choices=self.tap_choices)
 
         self.stop           = config.getfloat(  'stop',           default=2.0,    minval=0.0)
         self.step           = config.getfloat(  'step',           default=0.005,  minval=0.0)
