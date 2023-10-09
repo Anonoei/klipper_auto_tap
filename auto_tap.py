@@ -14,16 +14,17 @@ class AutoTAP:
         self.printer = config.get_printer()
 
         self.tap_choices = {
+            "NONE": None,
             "DEV": {
                 "Expected": (0.0, 9.0),
                 "Multiple": 2,
             },
             "CL_CNC": {
-                "Expected": (0.0, 1.0),
+                "Expected": (0.1, 1.0),
                 "Multiple": 2,
             },
             "RC8": {
-                "Expected": (0.5, 2.0),
+                "Expected": (0.7, 2.0),
                 "Multiple": 4,
             },
         }
@@ -35,7 +36,7 @@ class AutoTAP:
 
         self.set            = config.getboolean('set',            default=True)
         self.settling_probe = config.getboolean('settling_probe', default=True)
-        self.tap_version    = config.getchoice( 'tap_version',    default="DEV",  choices=self.tap_choices)
+        self.tap_version    = config.getchoice( 'tap_version',    default="NONE",  choices=self.tap_choices)
 
         self.stop           = config.getfloat(  'stop',           default=2.0,    minval=0.0)
         self.step           = config.getfloat(  'step',           default=0.005,  minval=0.0)
@@ -122,8 +123,8 @@ class AutoTAP:
 
         force = gcmd.get_int("FORCE", 0, minval=0, maxval=1)
         
-        if not tap_version in self.tap_choices.keys():
-            raise gcmd.error(f"TAP_VERSION must be one of {', '.join(self.tap_version.keys())}")
+        if tap_version == "NONE" or not tap_version in self.tap_choices.keys():
+            raise gcmd.error(f"TAP_VERSION must be one of {', '.join(self.tap_version.keys()[1:])}")
 
         if not force and self.offset is not None:
             self.gcode.respond_info(f"Auto TAP set z-offset to {self.offset:.3f}")
@@ -172,15 +173,22 @@ class AutoTAP:
             travel_min = min(travels)
             travel_max = max(travels)
 
-            self.offset = travel_mean * self.tap_choices[tap_version]["Multiple"]
+            offset = travel_mean * self.tap_choices[tap_version]["Multiple"]
 
             results = "Auto TAP Results\n"
             results += f"Samples: {len(travels)}, Total Steps: {sum(steps)}\n"
             results += f"Probe Mean: {probe_mean:.4f} / Min: {probe_min:.4f} / Max: {probe_max:.4f}\n"
             results += f"Measure Mean: {measure_mean:.4f} / Min: {measure_min:.4f} / Max: {measure_max:.4f}\n"
             results += f"Travel Mean: {travel_mean:.4f} / Min: {travel_min:.4f} / Max: {travel_max:.4f}\n"
-            results += f"Calculated z-offset on {tap_version} tap: {self.offset:.3f}"
+            results += f"Calculated z-offset on {tap_version} tap: {offset:.3f}"
             self.gcode.respond_info(results)
+
+            offset_min = self.tap_choices[tap_version]["Expected"][0]
+            offset_max = self.tap_choices[tap_version]["Expected"][1]
+            if offset < offset_min or offset > offset_max:
+                raise gcmd.error(f"Offset does not match expected result. Expected between {offset_min:.2f}-{offset_max:.2f}, Got: {offset:.3f}")
+            
+            self.offset = offset
             if set_at_end:
                 self._set_z_offset(self.offset)
 
