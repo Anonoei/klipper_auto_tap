@@ -13,7 +13,6 @@ class AutoTAP:
         self.config = config
         self.printer = config.get_printer()
 
-        self.calc_choices = {"NONE": "NONE", "QGL": "QGL", "STA": "STA"}
         self.tap_choices = {
             "DEV": {
                 "Expected": (0.0, 9.0),
@@ -36,7 +35,6 @@ class AutoTAP:
 
         self.set            = config.getboolean('set',            default=True)
         self.settling_probe = config.getboolean('settling_probe', default=True)
-        self.calc_method    = config.getchoice( 'calc_method',    default="NONE",   choices=self.calc_choices)
         self.tap_version    = config.getchoice( 'tap_version',    default="DEV",  choices=self.tap_choices)
 
         self.stop           = config.getfloat(  'stop',           default=2.0,    minval=0.0)
@@ -76,14 +74,6 @@ class AutoTAP:
         if self.lift_speed is None:
             self.lift_speed = probe.lift_speed
 
-        if self.calc_method == "NONE":
-            if self.printer.lookup_object('quad_gantry_level', default=None) is not None:
-                self.calc_method = "QGL"
-            elif self.printer.lookup_object('screws_tilt_adjust', default=None) is not None:
-                self.calc_method = "STA"
-            else:
-                self.calc_method = "QGL"
-
     def handle_home_rails_end(self, homing_state, rails):
         if not len(self.steppers.keys()) == 3:
             for rail in rails:
@@ -118,7 +108,6 @@ class AutoTAP:
 
         set_at_end = gcmd.get_int("SET", default=self.set, minval=0, maxval=1)
         settling_probe = gcmd.get_int("SETTLING_PROBE", default=self.settling_probe, minval=0, maxval=1)
-        calc_method = gcmd.get('CALC_METHOD', default=self.calc_method)
         tap_version = gcmd.get('TAP_VERSION', default=self.tap_version)
 
         stop = gcmd.get_float("STOP", default=self.stop, above=0.0)
@@ -132,9 +121,6 @@ class AutoTAP:
         travel_speed = gcmd.get_float("TRAVEL_SPEED", default=self.travel_speed, above=0.0)
 
         force = gcmd.get_int("FORCE", 0, minval=0, maxval=1)
-
-        if not calc_method in self.calc_choices.keys():
-            raise gcmd.error(f"CALC_METHOD must be one of {', '.join(self.calc_choices.keys())}")
         
         if not tap_version in self.tap_choices.keys():
             raise gcmd.error(f"TAP_VERSION must be one of {', '.join(self.tap_version.keys())}")
@@ -151,7 +137,7 @@ class AutoTAP:
         probes = []
         measures = []
         travels = []
-        self.gcode.respond_info(f"Auto TAP performing {sample_count} samples to calculate z-offset with {calc_method} method on {tap_version} tap\nProbe Min: {probe_to}, Stop: {stop}, Step: {step}")
+        self.gcode.respond_info(f"Auto TAP performing {sample_count} samples to calculate z-offset on {tap_version} tap\nProbe Min: {probe_to}, Stop: {stop}, Step: {step}")
         self._home(False, False, True)
         self._move([None, None, stop + retract], lift_speed)
         if settling_probe:
@@ -186,29 +172,14 @@ class AutoTAP:
             travel_min = min(travels)
             travel_max = max(travels)
 
-            if calc_method == "QGL":
-                """
-                    QGL example
-                      Traveled from z-0.17 (probe) to 0.80 (measure)
-                      TAP travel = abs(probe) + abs(measure) = 0.10
-                      Offset = travel * 2 = 0.2
-                """
-                self.offset = travel_mean * 2
-            elif calc_method == "STA":
-                """
-                    STA example
-                      Traveled from z-0.60 (probe) to -0.57 (measure)
-                      TAP travel = abs(probe - measure) = 0.03
-                      Offset = measure + (travel/2) = -0.585
-                """
-                self.offset = measure_mean + (travel_mean/2)
+            self.offset = travel_mean * self.tap_choices[tap_version]["Multiple"]
 
             results = "Auto TAP Results\n"
             results += f"Samples: {len(travels)}, Total Steps: {sum(steps)}\n"
             results += f"Probe Mean: {probe_mean:.4f} / Min: {probe_min:.4f} / Max: {probe_max:.4f}\n"
             results += f"Measure Mean: {measure_mean:.4f} / Min: {measure_min:.4f} / Max: {measure_max:.4f}\n"
             results += f"Travel Mean: {travel_mean:.4f} / Min: {travel_min:.4f} / Max: {travel_max:.4f}\n"
-            results += f"Calculated {calc_method} on {tap_version} tap Z-Offset: {self.offset:.3f}"
+            results += f"Calculated z-offset on {tap_version} tap: {self.offset:.3f}"
             self.gcode.respond_info(results)
             if set_at_end:
                 self._set_z_offset(self.offset)
