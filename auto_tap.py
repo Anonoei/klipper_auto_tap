@@ -15,8 +15,8 @@ class AutoTAP:
 
         self.calc_choices = {"NONE": "NONE", "QGL": "QGL", "STA": "STA"}
 
-        self.x              = config.getfloat(  'x',              default=150)
-        self.y              = config.getfloat(  'y',              default=150)
+        self.x              = config.getfloat(  'x',              default=None)
+        self.y              = config.getfloat(  'y',              default=None)
         self.z              = config.getfloat(  'z',              default=10)
         self.probe_to       = config.getfloat(  'probe_to',       default=-2, maxval=0.0)
 
@@ -30,7 +30,7 @@ class AutoTAP:
         self.samples        = config.getint(    'samples',        default=None,   minval=1)
         self.retract_dist   = config.getfloat(  'retract',        default=None,   above=0.0)
 
-        self.probe_speed    = config.getfloat(  'probe_speed',    default=None,   above=0.0)
+        self.probe_speed    = config.getfloat(  'probe_speed',    default=1.0,   above=0.0)
         self.lift_speed     = config.getfloat(  'lift_speed',     default=None,   above=0.0)
         self.travel_speed   = config.getfloat(  'travel_speed',   default=1000.0, above=0.0)
 
@@ -44,6 +44,7 @@ class AutoTAP:
         self.gcode.register_command('AUTO_TAP',
                                     self.cmd_AUTO_TAP,
                                     desc=self.cmd_AUTO_TAP_help)
+        self.steppers = {}
 
     def handle_connect(self):
         for endstop, name in self.printer.load_object(self.config, 'query_endstops').endstops:
@@ -69,19 +70,30 @@ class AutoTAP:
                 self.calc_method = "QGL"
 
     def handle_home_rails_end(self, homing_state, rails):
-        # get z homing position
-        for rail in rails:
-            if rail.get_steppers()[0].is_active_axis('z'):
-                # get homing settings from z rail
-                self.z_homing = rail.position_endstop
-                if self.probe_speed is None:
-                    self.probe_speed = rail.homing_speed
-                if self.retract_dist is None:
-                    self.retract_dist = rail.homing_retract_dist
+        if not len(self.steppers.keys()) == 3:
+            for rail in rails:
+                pos_min, pos_max = rail.get_range()
+                pos_center = (pos_max - pos_min)/2
+                for stepper in rail.get_steppers():
+                    name = stepper._name
+                    if name == "stepper_x":
+                        self.steppers["x"] = [pos_min, pos_max, pos_center]
+                        if self.x is None:
+                            self.x = pos_center
+                    elif name == "stepper_y":
+                        self.steppers["y"] = [pos_min, pos_max, pos_center]
+                        if self.y is None:
+                            self.y = pos_center
+                    elif name == "stepper_z":
+                        self.z_homing = rail.position_endstop
+                        if self.retract_dist is None:
+                            self.retract_dist = rail.homing_retract_dist
+                        self.steppers["z"] = [pos_min, pos_max, pos_center]
 
     cmd_AUTO_TAP_help = ("Automatically calibrate Voron TAP's probe offset")
     def cmd_AUTO_TAP(self, gcmd):
-        if self.z_homing is None:
+        self.printer.lookup_object('toolhead').wait_moves()
+        if len(self.steppers.keys()) < 3:
             raise gcmd.error("Must home axes first")
         
         x = gcmd.get_float("X", self.x)
@@ -121,6 +133,8 @@ class AutoTAP:
         measures = []
         travels = []
         self.gcode.respond_info(f"Auto TAP performing {sample_count} samples to calculate z-offset with {calc_method} method\nProbe Min: {probe_to}, Stop: {stop}, Step: {step}")
+        self._home(False, False, True)
+        self._move([None, None, stop + retract], lift_speed)
         if settling_probe:
             self._probe(self.z_endstop.mcu_endstop, probe_to, probe_speed)
             self._move([None, None, stop + retract], lift_speed)
@@ -201,6 +215,17 @@ class AutoTAP:
         pos[2] = min_z
         homing = self.printer.lookup_object('homing')
         return homing.probing_move(mcu_endstop, pos, speed)
+    
+    def _home(self, x=True, y=True, z=True):
+        command = ["G28"]
+        if x:
+            command[-1] += " X0"
+        if y:
+            command[-1] += " Y0"
+        if z:
+            command[-1] += " Z0"
+        self.gcode._process_commands(command, False)
+        self.printer.lookup_object('toolhead').wait_moves()
     
     def _endstop_triggered(self):
         print_time = self.printer.lookup_object('toolhead').get_last_move_time()
