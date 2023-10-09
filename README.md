@@ -13,17 +13,18 @@ This is only known to work on QGL based printers, namely the Voron 2.
 If you use a different printer and want to help add support, please create an [issue](https://github.com/Anonoei/klipper_auto_tap/issues), or message me on Discord. 
 Please include Auto TAP's console output so I can try to fix the issue.
 
-**This module is under development**: Please ensure the calculated offset seems reasonable for your printer!
+**This module is under development**: Please ensure the calculated offset seems reasonable for your printer! See [Validate Results](https://github.com/klipper_auto_tap#validate_results) for how to validate the offset.
 
 # Table of Contents
  - [Overview](https://github.com/anonoei/klipper_auto_tap#overview)
  - [How does it work](https://github.com/anonoei/klipper_auto_tap#how-does-it-work)
- - [Usage examples](https://github.com/anonoei/klipper_auto_tap#usage_examples)
  - [Using Klipper Auto TAP](https://github.com/anonoei/klipper_auto_tap#using-klipper-auto-tap)
    - [Installation](https://github.com/anonoei/klipper_auto_tap#installation)
+     - [Moonraker Update Manager](https://github.com/anonoei/klipper_auto_tap#moonraker-update-manager)
    - [Configuration](https://github.com/anonoei/klipper_auto_tap#configuration)
    - [Macro](https://github.com/anonoei/klipper_auto_tap#macro)
-   - [Moonraker Update Manager](https://github.com/anonoei/klipper_auto_tap#moonraker-update-manager)
+   - [Validate Results](https://github.com/klipper_auto_tap#validate_results)
+   - [Example usage](https://github.com/anonoei/klipper_auto_tap#example_usage)
 
 ## Overview
  - License: MIT
@@ -39,16 +40,8 @@ Please include Auto TAP's console output so I can try to fix the issue.
    3. Calculate travel distance *travel* = `abs(probe z - measure distance)`
    4. Save the resulting probe, measure distance, and travel
 4. Calculate Z-Offset based on `CALC_METHOD`
-   - QGL: `travel_mean \* 2`
+   - QGL: `travel_mean * 2`
    - STA: `measure_mean + (travel_mean/2)` (under development)
-
-## Usage examples
-One and done:
- - Run `AUTO_TAP`, and save the z-offset. Adjust as needed based on build surface material
-
-
-Before starting print:
- - In your `PRINT_START` macro, add `AUTO_TAP` after homing and leveling have been complete
 
 ## Using Klipper Auto TAP
 ### Installation
@@ -72,6 +65,18 @@ chmod +x install.sh
  3. Restart klipper
     1. `sudo systemctl restart klipper`
 
+### Moonraker Update Manager
+
+```
+[update_manager klipper_auto_tap]
+type: git_repo
+path: ~/klipper_auto_tap
+origin: https://github.com/anonoei/klipper_auto_tap.git
+primary_branch: main
+install_script: install.sh
+managed_services: klipper
+```
+
 ### Configuration
 Place this in your printer.cfg
 ```
@@ -80,13 +85,13 @@ Place this in your printer.cfg
 The values listed below are the defaults Auto TAP uses. You can include them if you wish to change their values.
 ```
 [auto_tap]
-x: Unset             ; X position to probe, should be the middle of your bed
-y: Unset               ; Y position to probe, should be the middle of your bed
+x: Unset             ; X position to probe, Defaults to the middle of the x axis `(max - min)/2`
+y: Unset             ; Y position to probe, Defaults to the middle of the y axis `(max - min)/2`
 z: 10                ; Z position to park
 probe_to: -2         ; Lower probe until it triggers, or reaches this value
 set: True            ; Set probe offset after calculation
 settling_probe: True ; Perform a dummy probe before starting
-calc_method: Unset   ; Defaults to your printers leveling method, "QGL", or "STA". You probably don't want to change this
+calc_method: Unset   ; Defaults to your printers leveling method, "QGL", or "STA". You probably don't want to define this
 stop: 2.0            ; Lift Z up to this amount for TAP to de-actuate
 step: 0.005          ; Lift Z by this amount each check
 samples: Unset       ; Number of samples to take, Defaults to your config's probe sample count
@@ -99,13 +104,13 @@ travel_speed: 1000   ; Speed for travel to park position
 Run the klipper command `AUTO_TAP`. You can also use the arguments below
 Argument       | Default | Description
 -------------- | ------- | -----------
-X              | Unset   | X position to probe, Defaults to the middle of the x rail `(max - min)/2`
-Y              | Unset   | Y position to probe, Defaults to the middle of the y rail `(max - min)/2`
+X              | Unset   | X position to probe, Defaults to the middle of the x axis `(max - min)/2`
+Y              | Unset   | Y position to probe, Defaults to the middle of the y axis `(max - min)/2`
 Z              | 10      | Z position to park
 PROBE_TO       | -2      | Lower probe until it triggers, or reaches this value
 SET            | 1       | Set probe offset after calculation
 SETTLING_PROBE | 1       | Perform a dummy probe before starting
-CALC_METHOD    | Unset   | Defaults to your printers leveling method, "QGL", or "STA". You probably don't want to change this
+CALC_METHOD    | Unset   | Defaults to your printers leveling method, "QGL", or "STA". You probably don't want to define this
 STOP           | 2.0     | Lift Z up to this amount for TAP to de-actuate
 STEP           | 0.005   | Lift Z by this amount each check
 SAMPLES        | Unset   | Number of samples to take, Defaults to your config's probe sample count
@@ -119,13 +124,24 @@ If you set values under *Configuration*, those will become the defaults.
 
 If you run `AUTO_TAP` again, it will set the z-offset to the last calculated value unless you run `AUTO_TAP FORCE=1`.
 
-### Moonraker Update Manager
-```
-[update_manager klipper_auto_tap]
-type: git_repo
-path: ~/klipper_auto_tap
-origin: https://github.com/anonoei/klipper_auto_tap.git
-primary_branch: main
-install_script: install.sh
-managed_services: klipper
-```
+### Validate Results
+ After `AUTO_TAP` is run, by default it will apply the calculated offset.
+ 1. Run `G0 Z`*(first layer height)*
+    - I use a first layer height of 0.25, so it's `G0 Z0.25`
+ 2. Verify there is a gap between the tip of the nozzle and the build surface, and it looks close to the Z distance you moved the toolhead to
+ 3. If your nozzle is touching the bed **DO NOT USE THIS OFFSET**
+    1. Try running `AUTO_TAP FORCE=1`, and re-validate
+    2. Create an [issue](https://github.com/Anonoei/klipper_auto_tap/issues). Please include Auto TAP's console output and your printer model
+
+### Example Usage
+One and done:
+1.  Run `AUTO_TAP`, and [validate the offset](https://github.com/klipper_auto_tap#validate_results)
+2.  Run `Z_OFFSET_APPLY_PROBE` to save the offset.
+3.  Restart your printer
+4.  Adjust as needed based on build surface material
+
+
+Before starting print:
+1.  Open your printers configuration
+2.  In your `PRINT_START` macro, add `AUTO_TAP` after homing and leveling have been complete
+3.  Adjust as needed based on build surface material
