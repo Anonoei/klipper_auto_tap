@@ -119,6 +119,7 @@ class AutoTAP:
         set_at_end = gcmd.get_int("SET", default=self.set, minval=0, maxval=1)
         settling_probe = gcmd.get_int("SETTLING_PROBE", default=self.settling_probe, minval=0, maxval=1)
         calc_method = gcmd.get('CALC_METHOD', default=self.calc_method)
+        tap_version = gcmd.get('TAP_VERSION', default=self.tap_version)
 
         stop = gcmd.get_float("STOP", default=self.stop, above=0.0)
         step = gcmd.get_float("STEP", default=self.step, above=0.0)
@@ -134,6 +135,9 @@ class AutoTAP:
 
         if not calc_method in self.calc_choices.keys():
             raise gcmd.error(f"CALC_METHOD must be one of {', '.join(self.calc_choices.keys())}")
+        
+        if not tap_version in self.tap_choices.keys():
+            raise gcmd.error(f"TAP_VERSION must be one of {', '.join(self.tap_version.keys())}")
 
         if not force and self.offset is not None:
             self.gcode.respond_info(f"Auto TAP set z-offset to {self.offset:.3f}")
@@ -147,7 +151,7 @@ class AutoTAP:
         probes = []
         measures = []
         travels = []
-        self.gcode.respond_info(f"Auto TAP performing {sample_count} samples to calculate z-offset with {calc_method} method\nProbe Min: {probe_to}, Stop: {stop}, Step: {step}")
+        self.gcode.respond_info(f"Auto TAP performing {sample_count} samples to calculate z-offset with {calc_method} method on {tap_version} tap\nProbe Min: {probe_to}, Stop: {stop}, Step: {step}")
         self._home(False, False, True)
         self._move([None, None, stop + retract], lift_speed)
         if settling_probe:
@@ -204,7 +208,7 @@ class AutoTAP:
             results += f"Probe Mean: {probe_mean:.4f} / Min: {probe_min:.4f} / Max: {probe_max:.4f}\n"
             results += f"Measure Mean: {measure_mean:.4f} / Min: {measure_min:.4f} / Max: {measure_max:.4f}\n"
             results += f"Travel Mean: {travel_mean:.4f} / Min: {travel_min:.4f} / Max: {travel_max:.4f}\n"
-            results += f"Calculated {calc_method} Z-Offset: {self.offset:.3f}"
+            results += f"Calculated {calc_method} on {tap_version} tap Z-Offset: {self.offset:.3f}"
             self.gcode.respond_info(results)
             if set_at_end:
                 self._set_z_offset(self.offset)
