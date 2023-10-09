@@ -194,7 +194,7 @@ class AutoTAP:
             if set_at_end:
                 self._set_z_offset(self.offset)
 
-    def _tap(self, step_size: float, stop: float, probe_min, probe_speed: float) -> tuple[int, float, float, float]:
+    def _tap(self, step_size: float, stop: float, probe_min, probe_speed: float): # -> tuple[int, float, float, float]
         probe = self._probe(self.z_endstop.mcu_endstop, probe_min, probe_speed)[2] # Moves until TAP actuates
         steps = int((abs(probe) + stop) / step_size)
         for step in range(0, steps):
@@ -209,7 +209,7 @@ class AutoTAP:
     def _move(self, coord, speed):
         self.printer.lookup_object('toolhead').manual_move(coord, speed)
 
-    def _probe(self, mcu_endstop, min_z: float, speed: float) -> list[float, float, float]:
+    def _probe(self, mcu_endstop, min_z: float, speed: float): # -> list[float, float, float]
         toolhead = self.printer.lookup_object('toolhead')
         pos = toolhead.get_position()
         pos[2] = min_z
