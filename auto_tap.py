@@ -24,14 +24,17 @@ class AutoTAP:
             "DEV": {
                 "Expected": (0.0, 9.0),
                 "Multiple": 2,
+                "Adder": 0,
             },
             "CL_CNC": {
                 "Expected": (0.1, 1.0),
                 "Multiple": 2,
+                "Adder": 0,
             },
             "R8": {
                 "Expected": (0.7, 2.0),
-                "Multiple": 4,
+                "Multiple": 10,
+                "Adder": 1,
             },
         }
 
@@ -182,6 +185,7 @@ class AutoTAP:
             travel_max = max(travels)
 
             offset = travel_mean * self.tap_db[tap_version]["Multiple"]
+            offset += self.tap_db[tap_version]["Adder"]
 
             results = "Auto TAP Results\n"
             results += f"Samples: {len(travels)}, Total Steps: {sum(steps)}\n"

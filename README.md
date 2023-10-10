@@ -87,9 +87,9 @@ managed_services: klipper
  To configure auto tap you need to specify which version of TAP you are running
  Name               | tap_version | Validated
  ------------------ | ----------- | ---------
- ChaoticLab CNC Tap | CL_CNC      | True
- Voron Tap R8       | R8          | False
- Voron Tap R6       | R6          | False
+ ChaoticLab CNC Tap | CL_CNC      | Yes
+ Voron Tap R8       | R8          | No
+ Voron Tap R6       | R6          | No
 
 If your version of tap is not validated, please [validate results] before using the calculated offset, and let me know.
 
