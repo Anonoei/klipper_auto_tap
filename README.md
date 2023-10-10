@@ -84,39 +84,49 @@ managed_services: klipper
 ```
 
 ### Configuration
-Place this in your printer.cfg
+ To configure auto tap you need to specify which version of TAP you are running
+ Name               | tap_version | Validated
+ ------------------ | ----------- | ---------
+ ChaoticLab CNC Tap | CL_CNC      | True
+ Voron Tap R8       | R8          | False
+ Voron Tap R6       | R6          | False
+If your version of tap is not validated, please [validate results] before using the calculated offset, and let me know.
+
+
+Then, place this in your printer.cfg
 ```
 [auto_tap]
+tap_version: <your tap_version>
 ```
-The values listed below are the defaults Auto TAP uses. You can include them if you wish to change their values.
+The values listed below are the defaults Auto TAP uses. You can include them if you wish to change their values, or run into issues.
 ```
 [auto_tap]
-x: Unset             ; X position to probe, Defaults to the middle of the x axis `(max - min)/2`
-y: Unset             ; Y position to probe, Defaults to the middle of the y axis `(max - min)/2`
-z: 10                ; Z position to park
-probe_to: -2         ; Lower probe until it triggers, or reaches this value
-set: True            ; Set probe offset after calculation
-settling_probe: True ; Perform a dummy probe before starting
-calc_method: Unset   ; Defaults to your printers leveling method, "QGL", or "STA". You probably don't want to define this
-stop: 2.0            ; Lift Z up to this amount for TAP to de-actuate
-step: 0.005          ; Lift Z by this amount each check
-samples: Unset       ; Number of samples to take, Defaults to your config's probe sample count
-retract: Unset       ; Lift up by this amount at end, Defaults to your config's probe retract distance
-probe_speed: Unset   ; Probe at this speed, Defaults to your config's probe travel speed
-lift_speed: Unset    ; Retract at this speed, Defaults to your config's probe lift speed
-travel_speed: 1000   ; Speed for travel to park position
+tap_version: <your version> ; Set during the first part of configuration
+x: Unset                    ; X position to probe, Defaults to the middle of the x axis `(max - min)/2`
+y: Unset                    ; Y position to probe, Defaults to the middle of the y axis `(max - min)/2`
+z: 10                       ; Z position to park
+probe_to: -2                ; Lower probe until it triggers, or reaches this value
+set: True                   ; Set probe offset after calculation
+settling_probe: True        ; Perform a dummy probe before starting
+stop: 2.0                   ; Lift Z up to this amount for TAP to de-actuate
+step: 0.005                 ; Lift Z by this amount each check
+samples: Unset              ; Number of samples to take, Defaults to your config's probe sample count
+retract: Unset              ; Lift up by this amount at end, Defaults to your config's probe retract distance
+probe_speed: Unset          ; Probe at this speed, Defaults to your config's probe travel speed
+lift_speed: Unset           ; Retract at this speed, Defaults to your config's probe lift speed
+travel_speed: 1000          ; Speed for travel to park position
 ```
 ### Macro
 Run the klipper command `AUTO_TAP`. You can also use the arguments below
 Argument       | Default | Description
 -------------- | ------- | -----------
+TAP_VERSION    | Unset   | Defaults to the configuration value. You can use this to try other offsets.
 X              | Unset   | X position to probe, Defaults to the middle of the x axis `(max - min)/2`
 Y              | Unset   | Y position to probe, Defaults to the middle of the y axis `(max - min)/2`
 Z              | 10      | Z position to park
 PROBE_TO       | -2      | Lower probe until it triggers, or reaches this value
 SET            | 1       | Set probe offset after calculation
 SETTLING_PROBE | 1       | Perform a dummy probe before starting
-CALC_METHOD    | Unset   | Defaults to your printers leveling method, "QGL", or "STA". You probably don't want to define this
 STOP           | 2.0     | Lift Z up to this amount for TAP to de-actuate
 STEP           | 0.005   | Lift Z by this amount each check
 SAMPLES        | Unset   | Number of samples to take, Defaults to your config's probe sample count

@@ -14,7 +14,13 @@ class AutoTAP:
         self.printer = config.get_printer()
 
         self.tap_choices = {
-            "NONE": None,
+            "DEV":    "DEV",
+            "CL_CNC": "CL_CNC",
+            "R8":     "R8",
+            "R6":     "R8",
+        }
+
+        self.tap_db = {
             "DEV": {
                 "Expected": (0.0, 9.0),
                 "Multiple": 2,
@@ -23,11 +29,13 @@ class AutoTAP:
                 "Expected": (0.1, 1.0),
                 "Multiple": 2,
             },
-            "RC8": {
+            "R8": {
                 "Expected": (0.7, 2.0),
                 "Multiple": 4,
             },
         }
+
+        self.tap_version    = config.getchoice( 'tap_version',    choices=self.tap_choices)
 
         self.x              = config.getfloat(  'x',              default=None)
         self.y              = config.getfloat(  'y',              default=None)
@@ -36,7 +44,6 @@ class AutoTAP:
 
         self.set            = config.getboolean('set',            default=True)
         self.settling_probe = config.getboolean('settling_probe', default=True)
-        self.tap_version    = config.getchoice( 'tap_version',    default="NONE",  choices=self.tap_choices)
 
         self.stop           = config.getfloat(  'stop',           default=2.0,    minval=0.0)
         self.step           = config.getfloat(  'step',           default=0.005,  minval=0.0)
@@ -102,6 +109,8 @@ class AutoTAP:
         if len(self.steppers.keys()) < 3:
             raise gcmd.error("Must home axes first")
         
+        tap_version = gcmd.get('TAP_VERSION', default=self.tap_version)
+
         x = gcmd.get_float("X", self.x)
         y = gcmd.get_float("Y", self.y)
         z = gcmd.get_float("Z", self.z)
@@ -109,7 +118,6 @@ class AutoTAP:
 
         set_at_end = gcmd.get_int("SET", default=self.set, minval=0, maxval=1)
         settling_probe = gcmd.get_int("SETTLING_PROBE", default=self.settling_probe, minval=0, maxval=1)
-        tap_version = gcmd.get('TAP_VERSION', default=self.tap_version)
 
         stop = gcmd.get_float("STOP", default=self.stop, above=0.0)
         step = gcmd.get_float("STEP", default=self.step, above=0.0)
@@ -123,11 +131,11 @@ class AutoTAP:
 
         force = gcmd.get_int("FORCE", 0, minval=0, maxval=1)
         
-        if tap_version == "NONE" or not tap_version in self.tap_choices.keys():
-            raise gcmd.error(f"TAP_VERSION must be one of {', '.join(self.tap_version.keys()[1:])}")
+        if not tap_version in self.tap_choices.keys():
+            raise gcmd.error(f"TAP_VERSION must be one of {', '.join(self.tap_choices.keys())}")
 
         if not force and self.offset is not None:
-            self.gcode.respond_info(f"Auto TAP set z-offset to {self.offset:.3f}")
+            self.gcode.respond_info(f"Auto TAP set z-offset on {tap_version} tap to {self.offset:.3f}")
             self._set_z_offset(self.offset)
             return
 
@@ -173,7 +181,7 @@ class AutoTAP:
             travel_min = min(travels)
             travel_max = max(travels)
 
-            offset = travel_mean * self.tap_choices[tap_version]["Multiple"]
+            offset = travel_mean * self.tap_db[tap_version]["Multiple"]
 
             results = "Auto TAP Results\n"
             results += f"Samples: {len(travels)}, Total Steps: {sum(steps)}\n"
@@ -183,8 +191,8 @@ class AutoTAP:
             results += f"Calculated z-offset on {tap_version} tap: {offset:.3f}"
             self.gcode.respond_info(results)
 
-            offset_min = self.tap_choices[tap_version]["Expected"][0]
-            offset_max = self.tap_choices[tap_version]["Expected"][1]
+            offset_min = self.tap_db[tap_version]["Expected"][0]
+            offset_max = self.tap_db[tap_version]["Expected"][1]
             if offset < offset_min or offset > offset_max:
                 raise gcmd.error(f"Offset does not match expected result. Expected between {offset_min:.2f}-{offset_max:.2f}, Got: {offset:.3f}")
             
