@@ -5,6 +5,50 @@
 # This file may be distributed under the terms of the MIT license.
 from mcu import MCU_endstop
 
+class TapVersion:
+    Name = "None"
+    Min = 0.0
+    Max = 9.0
+    Multiple = 2
+    Adder = 0
+    def Calculate(self, travel: float):
+        return (travel * self.Multiple) + self.Adder
+
+class tap_DEV(TapVersion):
+    Name = "DEV"
+    Min = 0.0
+    Max = 9.0
+    Multiple = 2
+    Adder = 0
+
+class tap_CL_CNC(TapVersion):
+    Name = "CL_CNC"
+    Min = 0.1
+    Max = 1.0
+    Multiple = 2
+    Adder = 0
+
+class tap_R8(TapVersion):
+    Name = "R8"
+    Min = 0.7
+    Max = 2.0
+    Multiple = 10
+    Adder = 1
+
+class tap_R6(TapVersion):
+    Name = "R6"
+    Min = 0.7
+    Max = 2.0
+    Multiple = 10
+    Adder = 1
+
+class tap_VILTALI_CNC(TapVersion):
+    Name = "VILTALI_CNC"
+    Min = 0.5
+    Max = 1.5
+    Multiple = 25
+    Adder = 0
+
 class AutoTAP:
     def __init__(self, config):
         self.z_endstop = None
@@ -14,6 +58,7 @@ class AutoTAP:
         self.printer = config.get_printer()
 
         self.tap_choices = {
+<<<<<<< Updated upstream
             "DEV":    "DEV",
             "CL_CNC": "CL_CNC",
             "R8":     "R8",
@@ -33,6 +78,13 @@ class AutoTAP:
                 "Expected": (0.7, 2.0),
                 "Multiple": 4,
             },
+=======
+            "DEV":         tap_DEV,
+            "CL_CNC":      tap_CL_CNC,
+            "R8":          tap_R8,
+            "R6":          tap_R6,
+            "VILTALI_CNC": tap_VILTALI_CNC
+>>>>>>> Stashed changes
         }
 
         self.tap_version    = config.getchoice( 'tap_version',    choices=self.tap_choices)
@@ -131,13 +183,23 @@ class AutoTAP:
 
         force = gcmd.get_int("FORCE", 0, minval=0, maxval=1)
         
-        if not tap_version in self.tap_choices.keys():
-            raise gcmd.error(f"TAP_VERSION must be one of {', '.join(self.tap_choices.keys())}")
+        if isinstance(tap_version, str):
+            if not tap_version in self.tap_choices.keys():
+                raise gcmd.error(f"TAP_VERSION must be one of {', '.join(self.tap_choices.keys())}")
+            tap_version = self.tap_choices[tap_version]
 
         if not force and self.offset is not None:
             self.gcode.respond_info(f"Auto TAP set z-offset on {tap_version} tap to {self.offset:.3f}")
             self._set_z_offset(self.offset)
             return
+        
+        tap_version: TapVersion = tap_version()
+        
+        if tap_version.Name == "DEV":
+            multiple = gcmd.get_float("DEV_MULTIPLE")
+            adder = gcmd.get_float("DEV_ADDER")
+            tap_version.Multiple = multiple
+            tap_version.Adder = adder
 
         self._move([x, y, z], travel_speed) # Move to park position
         self._set_z_offset(0.0) # set z-offset to 0
@@ -181,7 +243,11 @@ class AutoTAP:
             travel_min = min(travels)
             travel_max = max(travels)
 
+<<<<<<< Updated upstream
             offset = travel_mean * self.tap_db[tap_version]["Multiple"]
+=======
+            offset = tap_version.Calculate(travel_mean)
+>>>>>>> Stashed changes
 
             results = "Auto TAP Results\n"
             results += f"Samples: {len(travels)}, Total Steps: {sum(steps)}\n"
@@ -191,10 +257,9 @@ class AutoTAP:
             results += f"Calculated z-offset on {tap_version} tap: {offset:.3f}"
             self.gcode.respond_info(results)
 
-            offset_min = self.tap_db[tap_version]["Expected"][0]
             offset_max = self.tap_db[tap_version]["Expected"][1]
-            if offset < offset_min or offset > offset_max:
-                raise gcmd.error(f"Offset does not match expected result. Expected between {offset_min:.2f}-{offset_max:.2f}, Got: {offset:.3f}")
+            if offset < tap_version.Min or offset > tap_version.Max:
+                raise gcmd.error(f"Offset does not match expected result. Expected between {tap_version.Min:.2f}-{tap_version.Max:.2f}, Got: {offset:.3f}")
             
             self.offset = offset
             if set_at_end:
