@@ -11,6 +11,7 @@ class TapVersion:
     Max = 9.0
     Multiple = 2
     Adder = 0
+    func = "_tap_rev_hop"
     def Calculate(self, travel: float):
         return (travel * self.Multiple) + self.Adder
 
@@ -23,7 +24,7 @@ class tap_DEV(TapVersion):
 
 class tap_CL_CNC(TapVersion):
     Name = "CL_CNC"
-    Min = 0.1
+    Min = 0.03
     Max = 1.0
     Multiple = 2
     Adder = 0
@@ -39,11 +40,11 @@ class tap_R6(TapVersion):
     Name = "R6"
     Min = 0.7
     Max = 2.0
-    Multiple = 10
-    Adder = 1
+    Multiple = 23
+    Adder = 0
 
-class tap_VILTALI_CNC(TapVersion):
-    Name = "VILTALI_CNC"
+class tap_VITALII_CNC(TapVersion):
+    Name = "VITALII_CNC"
     Min = 0.5
     Max = 1.5
     Multiple = 25
@@ -58,33 +59,11 @@ class AutoTAP:
         self.printer = config.get_printer()
 
         self.tap_choices = {
-<<<<<<< Updated upstream
-            "DEV":    "DEV",
-            "CL_CNC": "CL_CNC",
-            "R8":     "R8",
-            "R6":     "R8",
-        }
-
-        self.tap_db = {
-            "DEV": {
-                "Expected": (0.0, 9.0),
-                "Multiple": 2,
-            },
-            "CL_CNC": {
-                "Expected": (0.1, 1.0),
-                "Multiple": 2,
-            },
-            "R8": {
-                "Expected": (0.7, 2.0),
-                "Multiple": 4,
-            },
-=======
             "DEV":         tap_DEV,
             "CL_CNC":      tap_CL_CNC,
             "R8":          tap_R8,
             "R6":          tap_R6,
-            "VILTALI_CNC": tap_VILTALI_CNC
->>>>>>> Stashed changes
+            "VITALII_CNC": tap_VITALII_CNC
         }
 
         self.tap_version    = config.getchoice( 'tap_version',    choices=self.tap_choices)
@@ -159,7 +138,7 @@ class AutoTAP:
     def cmd_AUTO_TAP(self, gcmd):
         self.printer.lookup_object('toolhead').wait_moves()
         if len(self.steppers.keys()) < 3:
-            raise gcmd.error("Must home axes first")
+            raise gcmd.error(f"Must home axes first. Found {len(self.steppers.keys())} homed axes.")
         
         tap_version = gcmd.get('TAP_VERSION', default=self.tap_version)
 
@@ -182,24 +161,41 @@ class AutoTAP:
         travel_speed = gcmd.get_float("TRAVEL_SPEED", default=self.travel_speed, above=0.0)
 
         force = gcmd.get_int("FORCE", 0, minval=0, maxval=1)
-        
+
         if isinstance(tap_version, str):
             if not tap_version in self.tap_choices.keys():
                 raise gcmd.error(f"TAP_VERSION must be one of {', '.join(self.tap_choices.keys())}")
             tap_version = self.tap_choices[tap_version]
 
-        if not force and self.offset is not None:
-            self.gcode.respond_info(f"Auto TAP set z-offset on {tap_version} tap to {self.offset:.3f}")
+        tap_version: TapVersion = tap_version()
+
+        if force == 0 and self.offset is not None:
+            self.gcode.respond_info(f"Auto TAP set z-offset on {tap_version.Name} tap to {self.offset:.3f}")
             self._set_z_offset(self.offset)
             return
         
-        tap_version: TapVersion = tap_version()
-        
         if tap_version.Name == "DEV":
-            multiple = gcmd.get_float("DEV_MULTIPLE")
-            adder = gcmd.get_float("DEV_ADDER")
+            multiple = gcmd.get_float("DEV_MULTIPLE", default=tap_version.Multiple)
+            adder = gcmd.get_float("DEV_ADDER", default=tap_version.Adder)
+            function = gcmd.get("DEV_FUNC", default=tap_version.func)
             tap_version.Multiple = multiple
             tap_version.Adder = adder
+            tap_version.func = function
+        tap_func = getattr(self, tap_version.func)
+
+        if gcmd.get_int("PRINT_CONFIG", default=0, minval=0, maxval=1) == 1:
+            results = "AUTO TAP Configuration:\n"
+            results += f"TAP_VERSION: {tap_version.Name}\n"
+            results += f"| Min: {tap_version.Min}, Max: {tap_version.Max}\n"
+            results += f"| Multiple: {tap_version.Multiple}, Adder: {tap_version.Adder}\n"
+            results += f"| Func: {tap_version.func}\n"
+            results += f"Set: {set_at_end}, Settling probe: {settling_probe}\n"
+            results += f"XYZ: {x:.2f}, {y:.2f}, {z:.2f}\n"
+            results += f"Probe to: {probe_to}, Stop: {stop}, Step: {step}\n"
+            results += f"Speeds: Probe: {probe_speed}, Lift: {lift_speed}, Travel: {travel_speed}\n"
+            results += f"Force: {force}"
+            self.gcode.respond_info(results)
+            return
 
         self._move([x, y, z], travel_speed) # Move to park position
         self._set_z_offset(0.0) # set z-offset to 0
@@ -208,14 +204,16 @@ class AutoTAP:
         probes = []
         measures = []
         travels = []
-        self.gcode.respond_info(f"Auto TAP performing {sample_count} samples to calculate z-offset on {tap_version} tap\nProbe Min: {probe_to}, Stop: {stop}, Step: {step}")
+        self.gcode.respond_info(f"Auto TAP performing {sample_count} samples to calculate z-offset on {tap_version.Name} tap using '{' '.join(tap_version.func[5:].split('_'))}' method\nProbe Min: {probe_to}, Stop: {stop}, Step: {step}")
         self._home(False, False, True)
         self._move([None, None, stop + retract], lift_speed)
+
         if settling_probe:
             self._probe(self.z_endstop.mcu_endstop, probe_to, probe_speed)
             self._move([None, None, stop + retract], lift_speed)
+
         while len(travels) < sample_count:
-            result = self._tap(step, stop, probe_to, probe_speed)
+            result = tap_func(step, stop, probe_to, probe_speed)
             self._move([None, None, stop + retract], lift_speed)
             if result is None:
                 raise gcmd.error(f"Failed to de-actuate z_endstop after full travel! Try changing STOP to a value larger than {stop}")
@@ -243,21 +241,16 @@ class AutoTAP:
             travel_min = min(travels)
             travel_max = max(travels)
 
-<<<<<<< Updated upstream
-            offset = travel_mean * self.tap_db[tap_version]["Multiple"]
-=======
-            offset = tap_version.Calculate(travel_mean)
->>>>>>> Stashed changes
+            offset = tap_version.Calculate(travel_mean) - probe_mean
 
-            results = "Auto TAP Results\n"
+            results = f"Auto TAP Results on {tap_version.Name} using '{' '.join(tap_version.func[5:].split('_'))}' method\n"
             results += f"Samples: {len(travels)}, Total Steps: {sum(steps)}\n"
             results += f"Probe Mean: {probe_mean:.4f} / Min: {probe_min:.4f} / Max: {probe_max:.4f}\n"
             results += f"Measure Mean: {measure_mean:.4f} / Min: {measure_min:.4f} / Max: {measure_max:.4f}\n"
             results += f"Travel Mean: {travel_mean:.4f} / Min: {travel_min:.4f} / Max: {travel_max:.4f}\n"
-            results += f"Calculated z-offset on {tap_version} tap: {offset:.3f}"
+            results += f"Calculated z-offset: {offset:.3f}"
             self.gcode.respond_info(results)
 
-            offset_max = self.tap_db[tap_version]["Expected"][1]
             if offset < tap_version.Min or offset > tap_version.Max:
                 raise gcmd.error(f"Offset does not match expected result. Expected between {tap_version.Min:.2f}-{tap_version.Max:.2f}, Got: {offset:.3f}")
             
@@ -265,10 +258,23 @@ class AutoTAP:
             if set_at_end:
                 self._set_z_offset(self.offset)
 
-    def _tap(self, step_size: float, stop: float, probe_min, probe_speed: float): # -> tuple[int, float, float, float]
+    def _tap_simple(self, step_size: float, stop: float, probe_min, probe_speed: float): # -> tuple[int, float, float, float]
         probe = self._probe(self.z_endstop.mcu_endstop, probe_min, probe_speed)[2] # Moves until TAP actuates
         steps = int((abs(probe) + stop) / step_size)
         for step in range(0, steps):
+            z_pos = probe + (step * step_size) # checking z-position
+            self._move([None, None, z_pos], probe_speed)
+            self.printer.lookup_object('toolhead').wait_moves() # Wait for toolhead to move
+            if not self._endstop_triggered():
+                travel = abs(probe - z_pos)
+                return(step, probe, z_pos, travel)
+        return None
+    
+    def _tap_rev_hop(self, step_size: float, stop: float, probe_min, probe_speed: float):
+        probe = self._probe(self.z_endstop.mcu_endstop, probe_min, probe_speed)[2] # Moves until TAP actuates
+        steps = int((abs(probe) + stop) / step_size)
+        for step in range(0, steps):
+            self._move([None, None, probe], probe_speed) # Move back to probe position
             z_pos = probe + (step * step_size) # checking z-position
             self._move([None, None, z_pos], probe_speed)
             self.printer.lookup_object('toolhead').wait_moves() # Wait for toolhead to move

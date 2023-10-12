@@ -31,6 +31,7 @@ Please include Auto TAP's console output so I can try to fix the issue.
    - [Macro](https://github.com/Anonoei/klipper_auto_tap#macro)
    - [Validate Results](https://github.com/Anonoei/klipper_auto_tap#validate-results)
    - [Example usage](https://github.com/Anonoei/klipper_auto_tap#example-usage)
+ - [Tester Documentation](https://github.com/Anonoei/klipper_auto_tap#tester-documentation)
 
 ## Overview
  - License: MIT
@@ -45,9 +46,7 @@ Please include Auto TAP's console output so I can try to fix the issue.
    2. Slowly lift the toolhead by *step* until the endstop isn't triggered
    3. Calculate travel distance *travel* = `abs(probe z - measure distance)`
    4. Save the resulting probe, measure distance, and travel
-4. Calculate Z-Offset based on `CALC_METHOD`
-   - QGL: `travel_mean * 2`
-   - STA: `measure_mean + (travel_mean/2)` (under development)
+4. Calculate Z-Offset based on `TAP_VERSION`
 
 ## Using Klipper Auto TAP
 ### Installation
@@ -90,7 +89,8 @@ managed_services: klipper
  ChaoticLab CNC Tap | CL_CNC      | True
  Voron Tap R8       | R8          | False
  Voron Tap R6       | R6          | False
-If your version of tap is not validated, please [validate results] before using the calculated offset, and let me know.
+ VITALII MetalTap   | VITALII_CNC | False
+If your version of tap is not validated, please [validate results] before using the calculated offset, and let me know if it worked for you!
 
 
 Then, place this in your printer.cfg
@@ -161,3 +161,17 @@ Before starting print:
 1.  Open your printers configuration
 2.  In your `PRINT_START` macro, add `AUTO_TAP` after homing and leveling have been complete
 3.  Adjust as needed based on build surface material
+
+## Tester Documentation
+ Thanks for your interest in testing Auto TAP! There are a few macro arguments that aren't included in the above documentation. If you're having issues with Auto TAP and want to see if different values work better for you, here they are!
+
+
+1. Run `AUTO_TAP FORCE=1 TAP_VERSION=DEV` with any of the following arguments
+   1. `DEV_MULTIPLE` - Value to multiply the travel distance by to calculate offset
+   2. `DEV_ADDER` - Value to add to the calculated offset
+   3. `DEV_FUNC` - Method to 'tap'
+      - `simple` - Previous default, simply probes, and lifts the toolhead until the endstop is open
+      - `rev hop` - Before each step, hop down to probe position then move up
+
+
+ If you want to check what Auto TAP's variables, run `AUTO_TAP FORCE=1 PRINT_CONFIG=1`
