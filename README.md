@@ -147,7 +147,7 @@ If you run `AUTO_TAP` again, it will set the z-offset to the last calculated val
  2. Verify there is a gap between the tip of the nozzle and the build surface, and it looks close to the Z distance you moved the toolhead to
  3. If your nozzle is touching the bed **DO NOT USE THIS OFFSET**
     1. Try running `AUTO_TAP FORCE=1`, and re-validate
-    2. Create an [issue](https://github.com/Anonoei/klipper_auto_tap/issues). Please include Auto TAP's console output and your printer model
+    2. Create an [issue](https://github.com/Anonoei/klipper_auto_tap/issues). Please include Auto TAP's console output, your printer model, and the version of tap you're using.
 
 ### Example Usage
 One and done:
