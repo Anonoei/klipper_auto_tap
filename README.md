@@ -1,6 +1,8 @@
 # Klipper Auto TAP
  Klipper module for automatic z-offset configuration on [Voron TAP](https://github.com/VoronDesign/Voron-Tap)
 
+ **NOTICE**: It may not be possible for this to work on versions of tap besides ChaoticLab's CNC Tap. If you decide to try this anyway, please share your results in [Issue 5](https://github.com/Anonoei/klipper_auto_tap/issues/5) so we can try to fix this problem.
+
 **This module is under development**: Please ensure the calculated offset seems reasonable for your printer! See [Validate Results](https://github.com/klipper_auto_tap#validate_results) for how to validate the offset.
 
 This module calculates the distance your toolhead lifts to actuate TAP. 
