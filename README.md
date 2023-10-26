@@ -14,8 +14,10 @@ On textured PEI, the offset may need to be slightly lowered to get proper first-
 YMMV.
 
 This is only known to work on QGL based printers, namely the Voron 2. 
-If you use a different printer and want to help add support, please create an [issue](https://github.com/Anonoei/klipper_auto_tap/issues), or message me on Discord. 
+If you use a different printer and want to help add support, please create an [issue](https://github.com/Anonoei/klipper_auto_tap/issues), and/or send a message on discord. 
 Please include Auto TAP's console output so I can try to fix the issue.
+
+ - [VOC Discord - Auto TAP](https://discord.com/channels/460117602945990666/1161905815607840768)
 
 ## Known issues
  - [Issue 2](https://github.com/Anonoei/klipper_auto_tap/issues/2): TILT_ADJUST printers calculate wrong offset
@@ -91,7 +93,8 @@ managed_services: klipper
  Voron Tap R8       | R8          | False     | * 10 + 1
  Voron Tap R6       | R6          | False     | * 23
  VITALII MetalTap   | VITALII_CNC | True      | * 21.5
-If your version of tap is not validated, please [validate results] before using the calculated offset, and let me know if it worked for you!
+
+If your version of tap is not validated, please make sure you [validate results](https://github.com/Anonoei/klipper_auto_tap#validate-results) before using the calculated offset, and let me know if it worked for you!
 
 
 Then, place this in your printer.cfg
@@ -117,6 +120,7 @@ probe_speed: Unset          ; Probe at this speed, Defaults to your config's pro
 lift_speed: Unset           ; Retract at this speed, Defaults to your config's probe lift speed
 travel_speed: 1000          ; Speed for travel to park position
 ```
+
 ### Macro
 Run the klipper command `AUTO_TAP`. You can also use the arguments below
 Argument       | Default | Description
@@ -148,7 +152,7 @@ If you run `AUTO_TAP` again, it will set the z-offset to the last calculated val
  2. Verify there is a gap between the tip of the nozzle and the build surface, and it looks close to the Z distance you moved the toolhead to
  3. If your nozzle is touching the bed **DO NOT USE THIS OFFSET**
     1. Try running `AUTO_TAP FORCE=1`, and re-validate
-    2. Create an [issue](https://github.com/Anonoei/klipper_auto_tap/issues). Please include Auto TAP's console output, your printer model, and the version of tap you're using.
+    2. Create an [issue](https://github.com/Anonoei/klipper_auto_tap/issues), and/or post in Discord. Please include Auto TAP's console output, your printer model, and the version of tap you're using.
 
 ### Example Usage
 One and done:
@@ -163,16 +167,17 @@ Before starting print:
 2.  In your `PRINT_START` macro, add `AUTO_TAP` after homing and leveling have been complete
 3.  Adjust as needed based on build surface material
 
+
 ## Tester Documentation
  Thanks for your interest in testing Auto TAP! There are a few macro arguments that aren't included in the above documentation. If you're having issues with Auto TAP and want to see if different values work better for you, here they are!
 
 
-1. Run `AUTO_TAP FORCE=1 TAP_VERSION=DEV` with any of the following arguments
-   1. `DEV_MULTIPLE` - Value to multiply the travel distance by to calculate offset
-   2. `DEV_ADDER` - Value to add to the calculated offset
+- Run `AUTO_TAP FORCE=1 TAP_VERSION=DEV` with any of the following arguments
+   1. `DEV_MULTIPLE` - Value to multiply the travel distance by to calculate offset. The defaults are listed above next to tap_version (after *)
+   2. `DEV_ADDER` - Value to add to the calculated offset. The defaults are listed above next to tap_version (after +, 0 if not listed)
    3. `DEV_FUNC` - Method to 'tap'
       - `simple` - Previous default, simply probes, and lifts the toolhead until the endstop is open
       - `rev hop` - Before each step, hop down to probe position then move up
 
 
- If you want to check what Auto TAP's variables, run `AUTO_TAP FORCE=1 PRINT_CONFIG=1`
+ If you want to check Auto TAP's variables, run `AUTO_TAP FORCE=1 PRINT_CONFIG=1`
