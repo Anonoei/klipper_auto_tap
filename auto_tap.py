@@ -47,7 +47,7 @@ class tap_VITALII_CNC(TapVersion):
     Name = "VITALII_CNC"
     Min = 0.5
     Max = 1.5
-    Multiple = 25
+    Multiple = 21.5
     Adder = 0
 
 class AutoTAP:
