@@ -59,7 +59,6 @@ To install this module, you need to clone the repository and run the `install.sh
 cd ~
 git clone https://github.com/Anonoei/klipper_auto_tap.git
 cd klipper_auto_tap
-chmod +x install.sh
 ./install.sh
 ```
 #### Manual installation

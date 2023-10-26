@@ -88,7 +88,7 @@ class AutoTAP:
 
         self.offset = None
 
-        self.gcode_move = self.printer.lookup_object('gcode_move')
+        self.gcode_move = self.printer.load_object(config, 'gcode_move')
         self.printer.register_event_handler("klippy:connect", self.handle_connect)
         self.printer.register_event_handler("homing:home_rails_end", self.handle_home_rails_end)
         
