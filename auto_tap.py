@@ -50,6 +50,13 @@ class tap_VITALII_CNC(TapVersion):
     Multiple = 21.5
     Adder = 0
 
+class tap_CUSTOM(TapVersion):
+    Name = "CUSTOM"
+    Min = 0.7
+    Max = 2.0
+    Multiple = 10
+    Adder = 1
+
 class AutoTAP:
     def __init__(self, config):
         self.z_endstop = None
@@ -63,7 +70,8 @@ class AutoTAP:
             "CL_CNC":      tap_CL_CNC,
             "R8":          tap_R8,
             "R6":          tap_R6,
-            "VITALII_CNC": tap_VITALII_CNC
+            "VITALII_CNC": tap_VITALII_CNC,
+            "CUSTOM":      tap_CUSTOM
         }
 
         self.tap_version    = config.getchoice( 'tap_version',    choices=self.tap_choices)
@@ -86,6 +94,17 @@ class AutoTAP:
         self.lift_speed     = config.getfloat(  'lift_speed',     default=None,   above=0.0)
         self.travel_speed   = config.getfloat(  'travel_speed',   default=1000.0, above=0.0)
 
+        self.custom_min = config.getfloat( 'custom_min', default=0.7, minval=0.0)
+        self.custom_max = config.getfloat( 'custom_max', default=2.0, minval=0.0)
+        self.custom_multiple = config.getfloat( 'custom_multiple', default=10.0, minval=0.0)
+        self.custom_adder = config.getfloat( 'custom_adder', default=1.0, minval=0.0)
+
+        if self.tap_version.Name == 'CUSTOM':
+            self.tap_version.Min = self.custom_min
+            self.tap_version.Max = self.custom_max
+            self.tap_version.Multiple = self.custom_multiple
+            self.tap_version.Adder = self.custom_adder
+            
         self.offset = None
 
         self.gcode_move = self.printer.load_object(config, 'gcode_move')
