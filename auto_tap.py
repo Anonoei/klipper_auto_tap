@@ -221,7 +221,7 @@ class AutoTAP:
             if result is None:
                 raise gcmd.error(f"Failed to de-actuate z_endstop after full travel! Try changing STOP to a value larger than {stop}")
             steps.append(result[0])
-            probes.append(result[1]  - self.config_z_offset))
+            probes.append(result[1]  - self.config_z_offset)
             measures.append(result[2])
             travels.append(result[3])
             sample = f"Auto TAP sample {len(travels)}\n"
