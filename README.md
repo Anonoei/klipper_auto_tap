@@ -1,6 +1,8 @@
 # Klipper Auto TAP
  Klipper module for automatic z-offset configuration on [Voron TAP](https://github.com/VoronDesign/Voron-Tap)
 
+ ## This project is being deprecated due to me switching from TAP to Klicky. Feel free to continue post and/or message me for assistance, or help with the code. This repo will be archived March 1st, 2024.
+
  **NOTICE**: It may not be possible for this to work on versions of tap besides ChaoticLab's CNC Tap. If you decide to try this anyway, please share your results in [Issue 5](https://github.com/Anonoei/klipper_auto_tap/issues/5) so we can try to fix this problem.
 
 **This module is under development**: Please ensure the calculated offset seems reasonable for your printer! See [Validate Results](https://github.com/klipper_auto_tap#validate_results) for how to validate the offset.
