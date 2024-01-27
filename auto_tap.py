@@ -107,6 +107,8 @@ class AutoTAP:
         if probe is None:
             raise self.printer.config_error("A probe is needed for %s"
                                             % (self.config.get_name()))
+                                            
+        self.config_z_offset = probe.z_offset
         
         if self.samples is None:
             self.samples = probe.sample_count
@@ -136,6 +138,7 @@ class AutoTAP:
 
     cmd_AUTO_TAP_help = ("Automatically calibrate Voron TAP's probe offset")
     def cmd_AUTO_TAP(self, gcmd):
+        self.gcode.respond_info(f"current configured z_offset: {self.config_z_offset}")                                                                               
         self.printer.lookup_object('toolhead').wait_moves()
         if len(self.steppers.keys()) < 3:
             raise gcmd.error(f"Must home axes first. Found {len(self.steppers.keys())} homed axes.")
@@ -218,7 +221,7 @@ class AutoTAP:
             if result is None:
                 raise gcmd.error(f"Failed to de-actuate z_endstop after full travel! Try changing STOP to a value larger than {stop}")
             steps.append(result[0])
-            probes.append(result[1])
+            probes.append(result[1]  - self.config_z_offset)
             measures.append(result[2])
             travels.append(result[3])
             sample = f"Auto TAP sample {len(travels)}\n"
@@ -254,7 +257,7 @@ class AutoTAP:
             if offset < tap_version.Min or offset > tap_version.Max:
                 raise gcmd.error(f"Offset does not match expected result. Expected between {tap_version.Min:.2f}-{tap_version.Max:.2f}, Got: {offset:.3f}")
             
-            self.offset = offset
+            self.offset = offset + self.config_z_offset
             if set_at_end:
                 self._set_z_offset(self.offset)
 
